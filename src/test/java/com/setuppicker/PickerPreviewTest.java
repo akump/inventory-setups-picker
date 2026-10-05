@@ -1,0 +1,121 @@
+package com.setuppicker;
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.IntFunction;
+import javax.imageio.ImageIO;
+import net.runelite.client.ui.FontManager;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+
+/**
+ * Renders both forms of the picker to build/preview.png, for eyeballing the look without logging in.
+ */
+public class PickerPreviewTest
+{
+	private static final int WIDTH = 765;
+	private static final int HEIGHT = 503;
+
+	private static List<SetupEntry> setups()
+	{
+		final List<SetupEntry> setups = new ArrayList<>();
+		setups.add(new SetupEntry("Vorkath (dhcb)", true, null, 1));
+		setups.add(new SetupEntry("Zulrah", true, new Color(80, 200, 120), 2));
+		setups.add(new SetupEntry("Vardorvis", false, null, 3));
+		setups.add(new SetupEntry("Tombs of Amascut 300 invocation", false, new Color(230, 190, 90), 4));
+		setups.add(new SetupEntry("Barrows", false, null, 5));
+		setups.add(new SetupEntry("Slayer melee", false, null, 6));
+		setups.add(new SetupEntry("Slayer range", false, null, 7));
+		setups.add(new SetupEntry("Slayer burst", false, null, 8));
+		for (int i = 0; i < 20; i++)
+		{
+			setups.add(new SetupEntry("Clue step " + i, false, null, 9 + i));
+		}
+		return setups;
+	}
+
+	// stand-in for item sprites
+	private static final IntFunction<BufferedImage> ICONS = id ->
+	{
+		final BufferedImage image = new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = image.createGraphics();
+		g.setColor(Color.getHSBColor(id * 0.13f, 0.6f, 0.9f));
+		g.fillOval(6, 4, 24, 24);
+		g.dispose();
+		return image;
+	};
+
+	@Test
+	public void renderPreview() throws Exception
+	{
+		final BufferedImage image = new BufferedImage(WIDTH * 2, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = image.createGraphics();
+		g.setColor(new Color(60, 90, 60));
+		g.fillRect(0, 0, WIDTH * 2, HEIGHT);
+
+		// Left: the hotkey popup, mid-search
+		final PickerModel palette = new PickerModel();
+		palette.setSetups(setups());
+		palette.setActiveSetup("Slayer melee");
+		palette.openPalette();
+		for (char c : "sl".toCharArray())
+		{
+			palette.typeChar(c);
+		}
+		final PickerLayout paletteLayout = PickerLayout.computePalette(new Rectangle(WIDTH, HEIGHT), 240,
+			palette.view().getSetups().size(), PickerLayout.ROW_HEIGHT_ICONS, 10);
+		palette.setVisibleRows(paletteLayout.getVisibleRows());
+		palette.moveSelection(1);
+		PickerPainter.paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		assertTrue(paletteLayout.isPalette());
+		assertEquals(3, paletteLayout.getVisibleRows());
+
+		// Right: docked beside a stand-in bank, scrolled, with the mouse over a row
+		g.translate(WIDTH, 0);
+		final Rectangle bank = new Rectangle(220, 60, 488, 300);
+		g.setColor(new Color(73, 64, 52));
+		g.fill(bank);
+		final PickerModel docked = new PickerModel();
+		docked.setSetups(setups());
+		docked.setActiveSetup("Zulrah");
+		final PickerLayout dockedLayout = PickerLayout.compute(bank, WIDTH, true, 160, false,
+			docked.view().getSetups().size(), PickerLayout.ROW_HEIGHT_ICONS);
+		docked.setVisibleRows(dockedLayout.getVisibleRows());
+		docked.scrollBy(1);
+		final Rectangle hovered = dockedLayout.getRow(3);
+		PickerPainter.paint(g, dockedLayout, docked.view(), new Point(hovered.x + 20, hovered.y + 5), ICONS,
+			FontManager.getRunescapeSmallFont(), "");
+		g.dispose();
+
+		// left of the bank, same top, and no taller than it
+		assertEquals(bank.x - PickerLayout.GAP, dockedLayout.getBounds().x + dockedLayout.getBounds().width);
+		assertEquals(bank.y, dockedLayout.getBounds().y);
+		assertTrue(dockedLayout.getBounds().height <= bank.height);
+		assertEquals(3, dockedLayout.rowAt(new Point(hovered.x + 20, hovered.y + 5)));
+
+		final File out = new File("build/preview.png");
+		out.getParentFile().mkdirs();
+		ImageIO.write(image, "png", out);
+	}
+
+	@Test
+	public void dockedFallsBackWhenThereIsNoRoom()
+	{
+		// fixed mode: the bank spans the game area, with the inventory to its right
+		final Rectangle bank = new Rectangle(12, 2, 488, 334);
+		final PickerLayout left = PickerLayout.compute(bank, WIDTH, true, 160, false, 5, 20);
+		assertEquals(bank.x + bank.width + PickerLayout.GAP, left.getBounds().x);
+
+		final PickerLayout none = PickerLayout.compute(bank, 512, true, 160, true, 5, 20);
+		assertEquals(bank.x, none.getBounds().x);
+		assertTrue(none.isCollapsed());
+		assertEquals(-1, none.rowAt(new Point(bank.x + 5, bank.y + 5)));
+	}
+}
