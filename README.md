@@ -3,6 +3,8 @@
 A companion to the [Inventory Setups](https://github.com/dillydill123/inventory-setups) plugin that lets you open
 your setups from inside the game instead of the side panel.
 
+<img src="docs/sections.gif" alt="The hotkey popup listing setups under their sections, then filtered by a section's name and by setup name" width="420">
+
 ## Hotkey popup
 
 Press **Cmd+K** (Mac) or **Ctrl+K** (Windows/Linux) anywhere in game to open a list of all your setups. The key
@@ -29,6 +31,18 @@ it, click the search box to filter, scroll with the mouse wheel, and click the t
 can be turned off in the plugin's settings.
 
 <img src="docs/bank-list.png" alt="The list of setups beside the bank, with the open setup highlighted" width="700">
+
+## Sections
+
+If you sort your setups into sections in Inventory Setups, both lists group them the same way: a heading per
+section, in the side panel's order, with the setups that aren't in any section under "Unassigned". A setup that is
+in several sections is listed under each. Typing a section's name lists all of its setups. This can be turned off
+in the plugin's settings to get one flat list.
+
+With **Sections as pages** turned on in the settings, the lists show just the sections instead. Click a section, or
+select it and press `Enter`, to see its setups on a page of their own, and click its name at the top, or press
+`Left` or `Backspace`, to go back. Typing on a section's page searches that section; typing in the list of sections
+still searches every setup.
 
 ## Requirements
 

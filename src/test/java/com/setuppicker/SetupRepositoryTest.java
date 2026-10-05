@@ -79,4 +79,64 @@ public class SetupRepositoryTest
 		assertEquals(Arrays.asList("Vorkath", "Araxxor", "Zulrah", "barrows", "Cerberus"), sortedNames(false, true));
 		assertEquals(Arrays.asList("Zulrah", "barrows", "Vorkath", "Araxxor", "Cerberus"), sortedNames(false, false));
 	}
+
+	@Test
+	public void readsSections()
+	{
+		final String json = "[{\"name\":\"Bossing\",\"setups\":[\"Zulrah\",\"Vorkath\"],\"displayColor\":\"#FF00FF00\",\"isMaximized\":true},"
+			+ "{\"name\":\"Empty\",\"setups\":[],\"isMaximized\":false}, 5, {\"setups\":[\"Zulrah\"]}]";
+		final List<SetupSection> sections = SetupRepository.parseSections(gson, json);
+		assertEquals(2, sections.size());
+		assertEquals("Bossing", sections.get(0).getName());
+		assertEquals(Color.GREEN, sections.get(0).getDisplayColor());
+		assertEquals(Arrays.asList("Zulrah", "Vorkath"), sections.get(0).getSetupNames());
+		assertEquals("Empty", sections.get(1).getName());
+		assertNull(sections.get(1).getDisplayColor());
+		assertTrue(sections.get(1).getSetupNames().isEmpty());
+
+		for (String broken : new String[]{null, "", "not json", "{}", "[]"})
+		{
+			assertTrue(SetupRepository.parseSections(gson, broken).isEmpty());
+		}
+	}
+
+	private static List<String> groupedNames(List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst)
+	{
+		final List<SetupEntry> setups = new ArrayList<>();
+		setups.add(new SetupEntry("Zulrah", false, null, 1));
+		setups.add(new SetupEntry("Barrows", false, null, 1));
+		setups.add(new SetupEntry("Vorkath", true, null, 1));
+		setups.add(new SetupEntry("Araxxor", false, null, 1));
+		SetupRepository.sort(setups, alphabetical, favoritesFirst);
+		return SetupRepository.group(setups, sections, alphabetical, favoritesFirst).stream()
+			.map(row -> row.isHeader() ? "[" + row.getSectionName() + "]" : row.getSetup().getName())
+			.collect(Collectors.toList());
+	}
+
+	@Test
+	public void groupsSetupsUnderTheirSections()
+	{
+		final List<SetupSection> sections = Arrays.asList(
+			new SetupSection("Bossing", null, Arrays.asList("Zulrah", "Deleted setup", "Vorkath", "Araxxor")),
+			new SetupSection("Empty", null, Arrays.asList()),
+			new SetupSection("Dragons", null, Arrays.asList("Vorkath")));
+
+		// a section keeps Inventory Setups' order unless sorting is on, and a setup can be in several
+		assertEquals(Arrays.asList("[Bossing]", "Zulrah", "Vorkath", "Araxxor", "[Dragons]", "Vorkath", "[Unassigned]", "Barrows"),
+			groupedNames(sections, false, false));
+		assertEquals(Arrays.asList("[Bossing]", "Vorkath", "Araxxor", "Zulrah", "[Dragons]", "Vorkath", "[Unassigned]", "Barrows"),
+			groupedNames(sections, true, true));
+
+		// no heading for the leftovers when there are none
+		assertEquals(Arrays.asList("[Everything]", "Zulrah", "Barrows", "Vorkath", "Araxxor"),
+			groupedNames(Arrays.asList(new SetupSection("Everything", null, Arrays.asList("Zulrah", "Barrows", "Vorkath", "Araxxor"))), false, false));
+	}
+
+	@Test
+	public void withoutSectionsInUseTheListIsFlat()
+	{
+		assertEquals(Arrays.asList("Zulrah", "Barrows", "Vorkath", "Araxxor"), groupedNames(new ArrayList<>(), false, false));
+		assertEquals(Arrays.asList("Zulrah", "Barrows", "Vorkath", "Araxxor"),
+			groupedNames(Arrays.asList(new SetupSection("Empty", null, Arrays.asList("Deleted setup"))), false, false));
+	}
 }

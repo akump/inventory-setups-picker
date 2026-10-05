@@ -1,6 +1,7 @@
 package com.setuppicker;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,7 +40,7 @@ public class PickerModelTest
 	{
 		model.openPalette();
 		type("SLAY");
-		assertEquals(2, model.view().getSetups().size());
+		assertEquals(2, model.view().getRows().size());
 		assertEquals("Slayer melee", model.getSelectedSetup().getName());
 		assertEquals(7, model.view().getTotal());
 
@@ -47,7 +48,7 @@ public class PickerModelTest
 		model.backspace();
 		model.backspace();
 		model.backspace();
-		assertEquals(7, model.view().getSetups().size());
+		assertEquals(7, model.view().getRows().size());
 	}
 
 	@Test
@@ -55,7 +56,7 @@ public class PickerModelTest
 	{
 		model.openPalette();
 		type("zzz");
-		assertTrue(model.view().getSetups().isEmpty());
+		assertTrue(model.view().getRows().isEmpty());
 		assertNull(model.getSelectedSetup());
 		model.moveSelection(1);
 		assertNull(model.getSelectedSetup());
@@ -105,7 +106,7 @@ public class PickerModelTest
 		assertTrue(model.view().isPaletteOpen());
 		assertTrue(model.view().isSearchFocused());
 		assertEquals("", model.view().getQuery());
-		assertEquals(7, model.view().getSetups().size());
+		assertEquals(7, model.view().getRows().size());
 
 		model.resetSearch();
 		assertFalse(model.view().isPaletteOpen());
@@ -122,7 +123,7 @@ public class PickerModelTest
 		reloaded.add(new SetupEntry("Vorkath (dhcb)", false, null, 1));
 		reloaded.add(new SetupEntry("Zulrah", false, null, 1));
 		model.setSetups(reloaded);
-		assertEquals(2, model.view().getSetups().size());
+		assertEquals(2, model.view().getRows().size());
 		assertEquals("vor", model.view().getQuery());
 	}
 
@@ -133,7 +134,7 @@ public class PickerModelTest
 		// what clicking a row does, followed by the reload Inventory Setups' config change triggers
 		model.resetSearch();
 		assertEquals(4, model.view().getScroll());
-		model.setSetups(new ArrayList<>(model.view().getSetups()));
+		model.setRows(model.view().getRows(), 7);
 		assertEquals(4, model.view().getScroll());
 
 		// the popup starts at the top, and leaves the list beside the bank where it was
@@ -158,8 +159,196 @@ public class PickerModelTest
 	public void scrollIsPulledBackWhenTheListShrinks()
 	{
 		model.scrollBy(4);
-		final List<SetupEntry> fewer = new ArrayList<>(model.view().getSetups().subList(0, 4));
-		model.setSetups(fewer);
+		model.setRows(model.view().getRows().subList(0, 4), 4);
 		assertEquals(1, model.view().getScroll());
+	}
+
+	// Bossing: Vorkath, Zulrah / Slayer: Slayer melee, Vorkath / Unassigned: Barrows
+	private void setSectionedRows()
+	{
+		final SetupEntry vorkath = new SetupEntry("Vorkath", false, null, 1);
+		final List<PickerRow> rows = new ArrayList<>();
+		rows.add(PickerRow.header(new SetupSection("Bossing", null, new ArrayList<>())));
+		rows.add(PickerRow.of(vorkath));
+		rows.add(PickerRow.of(new SetupEntry("Zulrah", false, null, 1)));
+		rows.add(PickerRow.header(new SetupSection("Slayer", null, new ArrayList<>())));
+		rows.add(PickerRow.of(new SetupEntry("Slayer melee", false, null, 1)));
+		rows.add(PickerRow.of(vorkath));
+		rows.add(PickerRow.UNASSIGNED);
+		rows.add(PickerRow.of(new SetupEntry("Barrows", false, null, 1)));
+		model.setRows(rows, 4);
+	}
+
+	private List<String> rowNames()
+	{
+		final List<String> names = new ArrayList<>();
+		for (PickerRow row : model.view().getRows())
+		{
+			names.add(row.isBack() ? "<" + row.getSectionName() + ">"
+				: row.isHeader() ? "[" + row.getSectionName() + "]" : row.getSetup().getName());
+		}
+		return names;
+	}
+
+	@Test
+	public void selectionSkipsSectionHeadings()
+	{
+		setSectionedRows();
+		model.openPalette();
+		assertEquals(4, model.view().getTotal());
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+		assertEquals(1, model.view().getSelected());
+
+		// nothing above the first heading
+		model.moveSelection(-1);
+		assertEquals(1, model.view().getSelected());
+
+		model.moveSelection(2);
+		assertEquals("Slayer melee", model.getSelectedSetup().getName());
+		model.moveSelection(-1);
+		assertEquals("Zulrah", model.getSelectedSetup().getName());
+
+		model.pageSelection(5);
+		assertEquals("Barrows", model.getSelectedSetup().getName());
+		assertEquals(5, model.view().getScroll());
+
+		// going back up to the first setup of a section brings its heading into view too
+		model.moveSelection(-3);
+		assertEquals("Slayer melee", model.getSelectedSetup().getName());
+		assertEquals(3, model.view().getScroll());
+	}
+
+	@Test
+	public void searchKeepsHeadingsOfSectionsWithMatches()
+	{
+		setSectionedRows();
+		model.openPalette();
+		type("vor");
+		assertEquals(Arrays.asList("[Bossing]", "Vorkath", "[Slayer]", "Vorkath"), rowNames());
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+
+		model.openPalette();
+		type("barr");
+		assertEquals(Arrays.asList("[Unassigned]", "Barrows"), rowNames());
+	}
+
+	@Test
+	public void sectionNameFindsAllOfItsSetups()
+	{
+		setSectionedRows();
+		model.openPalette();
+		type("boss");
+		assertEquals(Arrays.asList("[Bossing]", "Vorkath", "Zulrah"), rowNames());
+
+		// the section's own setups, plus the setup named after it elsewhere
+		model.openPalette();
+		type("slayer");
+		assertEquals(Arrays.asList("[Slayer]", "Slayer melee", "Vorkath"), rowNames());
+
+		// "Unassigned" isn't a section to search for
+		model.openPalette();
+		type("unass");
+		assertTrue(model.view().getRows().isEmpty());
+		assertNull(model.getSelectedSetup());
+	}
+
+	@Test
+	public void sectionsOpenAsPages()
+	{
+		setSectionedRows();
+		model.setSectionPages(true);
+		model.openPalette();
+		assertTrue(model.view().isSectionPages());
+		assertEquals(Arrays.asList("[Bossing]", "[Slayer]", "[Unassigned]"), rowNames());
+		assertEquals(4, model.view().getTotal());
+
+		// headings are what there is to pick
+		model.moveSelection(1);
+		assertEquals("Slayer", model.getSelectedRow().getSectionName());
+		assertNull(model.getSelectedSetup());
+
+		model.openSection(model.getSelectedRow());
+		assertEquals(Arrays.asList("<Slayer>", "Slayer melee", "Vorkath"), rowNames());
+		assertEquals("Slayer melee", model.getSelectedSetup().getName());
+		model.moveSelection(-1);
+		assertTrue(model.getSelectedRow().isBack());
+
+		// searching a page stays within it
+		type("vor");
+		assertEquals(Arrays.asList("<Slayer>", "Vorkath"), rowNames());
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+		type("zzz");
+		assertEquals(Arrays.asList("<Slayer>"), rowNames());
+
+		// deleting past the start of the search goes back, to the section that was open
+		for (int i = 0; i < 6; i++)
+		{
+			model.backspace();
+		}
+		assertEquals(Arrays.asList("<Slayer>", "Slayer melee", "Vorkath"), rowNames());
+		model.backspace();
+		assertEquals(Arrays.asList("[Bossing]", "[Slayer]", "[Unassigned]"), rowNames());
+		assertEquals("Slayer", model.getSelectedRow().getSectionName());
+
+		model.openSection(PickerRow.UNASSIGNED);
+		assertEquals(Arrays.asList("<Unassigned>", "Barrows"), rowNames());
+		model.closeSection();
+		assertEquals("Unassigned", model.getSelectedRow().getSectionName());
+	}
+
+	@Test
+	public void searchingTheListOfSectionsFindsSetupsEverywhere()
+	{
+		setSectionedRows();
+		model.setSectionPages(true);
+		model.openPalette();
+		type("vor");
+		assertEquals(Arrays.asList("[Bossing]", "Vorkath", "[Slayer]", "Vorkath"), rowNames());
+		// Enter goes for the setup, though its heading could be picked as well
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+		model.moveSelection(-1);
+		assertEquals("Bossing", model.getSelectedRow().getSectionName());
+		model.moveSelection(2);
+		assertEquals("Slayer", model.getSelectedRow().getSectionName());
+	}
+
+	@Test
+	public void popupAndBankListKeepTheirOwnPage()
+	{
+		setSectionedRows();
+		model.setSectionPages(true);
+		model.openSection(model.view().getRows().get(0));
+		assertEquals(Arrays.asList("<Bossing>", "Vorkath", "Zulrah"), rowNames());
+
+		// the popup starts from the list of sections
+		model.openPalette();
+		assertEquals(Arrays.asList("[Bossing]", "[Slayer]", "[Unassigned]"), rowNames());
+		model.openSection(model.view().getRows().get(1));
+		model.resetSearch();
+		assertEquals(Arrays.asList("<Bossing>", "Vorkath", "Zulrah"), rowNames());
+
+		// picking a setup beside the bank leaves its page open, and so does a reload
+		model.resetSearch();
+		setSectionedRows();
+		assertEquals(Arrays.asList("<Bossing>", "Vorkath", "Zulrah"), rowNames());
+
+		// unless the section is gone
+		model.setRows(model.view().getRows().subList(1, 3), 2);
+		assertFalse(model.view().isSectionPages());
+		assertEquals(Arrays.asList("Vorkath", "Zulrah"), rowNames());
+	}
+
+	@Test
+	public void pagesNeedSections()
+	{
+		model.setSectionPages(true);
+		assertFalse(model.view().isSectionPages());
+		assertEquals(7, model.view().getRows().size());
+
+		// and headings can't be opened unless pages are on
+		model.setSectionPages(false);
+		setSectionedRows();
+		model.openSection(model.view().getRows().get(0));
+		assertEquals(8, model.view().getRows().size());
 	}
 }

@@ -15,6 +15,8 @@ public final class PickerLayout
 	static final int ROW_HEIGHT_ICONS = 20;
 	static final int ROW_HEIGHT_TEXT = 16;
 	static final int FOOTER_HEIGHT = 16;
+	static final int COLLAPSED_WIDTH = HEADER_HEIGHT;
+	static final int COLLAPSED_LENGTH = 96;
 
 	private final Rectangle bounds;
 	private final Rectangle header;
@@ -40,7 +42,7 @@ public final class PickerLayout
 	 * The hotkey-opened popup: centered horizontally in the game area, in its upper part.
 	 *
 	 * @param area       the canvas
-	 * @param setupCount number of setups to list, after the search is applied
+	 * @param setupCount number of rows to list (setups and section headings), after the search is applied
 	 * @param maxRows    most rows to show before scrolling
 	 */
 	public static PickerLayout computePalette(Rectangle area, int width, int setupCount, int rowHeight, int maxRows)
@@ -68,11 +70,18 @@ public final class PickerLayout
 	 *
 	 * @param bank       bounds of the bank interface
 	 * @param preferLeft sit left of the bank when both sides have room
-	 * @param setupCount number of setups to list, after the search is applied
+	 * @param uprightTab when collapsed, be a narrow upright tab rather than just the title bar
+	 * @param setupCount number of rows to list (setups and section headings), after the search is applied
 	 */
 	public static PickerLayout compute(Rectangle bank, int canvasWidth, boolean preferLeft, int width,
-		boolean collapsed, int setupCount, int rowHeight)
+		boolean collapsed, boolean uprightTab, int setupCount, int rowHeight)
 	{
+		final boolean upright = collapsed && uprightTab;
+		if (upright)
+		{
+			// A narrow tab standing against the bank's edge with its title running up it
+			width = COLLAPSED_WIDTH;
+		}
 		final int leftX = bank.x - GAP - width;
 		final int rightX = bank.x + bank.width + GAP;
 		final boolean leftFits = leftX >= 0;
@@ -94,12 +103,18 @@ public final class PickerLayout
 		}
 		final int y = bank.y;
 
+		if (upright)
+		{
+			final Rectangle tab = new Rectangle(x, y, width, Math.min(COLLAPSED_LENGTH, bank.height));
+			return new PickerLayout(tab, tab, null, null, null, rowHeight, 0);
+		}
+
 		final Rectangle header = new Rectangle(x, y, width, HEADER_HEIGHT);
 		if (collapsed)
 		{
+			// just the title bar
 			return new PickerLayout(header, header, null, null, null, rowHeight, 0);
 		}
-
 		final Rectangle search = new Rectangle(x + PADDING, y + HEADER_HEIGHT + PADDING, width - 2 * PADDING, SEARCH_HEIGHT);
 		final int listY = search.y + search.height + PADDING;
 		final int maxRows = Math.max(1, (bank.y + bank.height - listY - PADDING) / rowHeight);
@@ -129,7 +144,7 @@ public final class PickerLayout
 	}
 
 	/**
-	 * The area holding the setup rows, or null when collapsed.
+	 * The area holding the rows, or null when collapsed.
 	 */
 	public Rectangle getList()
 	{
@@ -152,6 +167,14 @@ public final class PickerLayout
 	public boolean isCollapsed()
 	{
 		return list == null;
+	}
+
+	/**
+	 * Whether this is the collapsed list in its upright tab form.
+	 */
+	public boolean isUprightTab()
+	{
+		return list == null && header.height > header.width;
 	}
 
 	public int getRowHeight()

@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -25,6 +26,7 @@ public final class PickerPainter
 	private static final Color TEXT = new Color(235, 228, 210);
 	private static final Color TEXT_MUTED = new Color(150, 142, 125);
 	private static final Color ROW_HOVER = new Color(255, 255, 255, 28);
+	private static final Color SECTION_BACKGROUND = new Color(0, 0, 0, 60);
 	private static final Color ROW_ACTIVE = new Color(255, 152, 31, 70);
 	private static final Color FAVORITE = new Color(255, 215, 0);
 	private static final Color SCROLLBAR = new Color(120, 110, 90);
@@ -33,6 +35,7 @@ public final class PickerPainter
 	private static final int ICON_HEIGHT = 16;
 	private static final int STAR_SIZE = 7;
 	private static final int SCROLLBAR_WIDTH = 3;
+	private static final int SECTION_ARROW_WIDTH = 5;
 
 	private PickerPainter()
 	{
@@ -62,7 +65,7 @@ public final class PickerPainter
 		}
 		if (layout.isPalette())
 		{
-			final SetupEntry selected = view.getSelected() < view.getSetups().size() ? view.getSetups().get(view.getSelected()) : null;
+			final SetupEntry selected = view.getSelected() < view.getRows().size() ? view.getRows().get(view.getSelected()).getSetup() : null;
 			final boolean closes = selected != null && selected.getName().equals(view.getActiveSetup());
 			g.setColor(TEXT_MUTED);
 			g.drawString(truncate(fm, "Up/Down: move   Enter: " + (closes ? "close" : "open") + "   Esc: cancel",
@@ -88,6 +91,11 @@ public final class PickerPainter
 
 		g.setColor(ACCENT);
 		final String title = view.getTotal() > 0 ? "Setups (" + view.getTotal() + ")" : "Setups";
+		if (layout.isUprightTab())
+		{
+			paintCollapsedTab(g, fm, header, title);
+			return;
+		}
 		g.drawString(title, header.x + 7, baseline(fm, header));
 		if (layout.isPalette())
 		{
@@ -111,6 +119,29 @@ public final class PickerPainter
 			arrow.addPoint(cx, cy + 3);
 		}
 		g.fill(arrow);
+	}
+
+	/**
+	 * The collapsed list in its upright form: a vertical tab with the expand arrow at the top and the title reading upwards.
+	 */
+	private static void paintCollapsedTab(Graphics2D g, FontMetrics fm, Rectangle tab, String title)
+	{
+		final int arrowSpace = 16;
+		final int cx = tab.x + tab.width / 2;
+		final int cy = tab.y + arrowSpace / 2 + 2;
+		final Polygon arrow = new Polygon();
+		arrow.addPoint(cx - 2, cy - 4);
+		arrow.addPoint(cx + 3, cy);
+		arrow.addPoint(cx - 2, cy + 4);
+		g.fill(arrow);
+
+		// Turned a quarter turn about the tab's bottom left corner, x runs up the tab and y across it
+		final AffineTransform upright = g.getTransform();
+		final int bottom = tab.y + tab.height;
+		g.rotate(-Math.PI / 2, tab.x, bottom);
+		final int across = (tab.width - fm.getAscent() - fm.getDescent()) / 2 + fm.getAscent();
+		g.drawString(truncate(fm, title, tab.height - arrowSpace - 12), tab.x + 7, bottom + across);
+		g.setTransform(upright);
 	}
 
 	private static void paintSearch(Graphics2D g, FontMetrics fm, Rectangle search, PickerModel.View view)
@@ -149,9 +180,9 @@ public final class PickerPainter
 		IntFunction<BufferedImage> icons, String status)
 	{
 		final Rectangle list = layout.getList();
-		final List<SetupEntry> setups = view.getSetups();
+		final List<PickerRow> rows = view.getRows();
 
-		if (setups.isEmpty())
+		if (rows.isEmpty())
 		{
 			final String message = view.getTotal() > 0 ? "No matches" : status;
 			g.setColor(TEXT_MUTED);
@@ -159,23 +190,28 @@ public final class PickerPainter
 			return;
 		}
 
-		final boolean scrollable = setups.size() > layout.getVisibleRows();
+		final boolean scrollable = rows.size() > layout.getVisibleRows();
 		final int rowWidth = list.width - (scrollable ? SCROLLBAR_WIDTH + 2 : 0);
 
 		for (int i = 0; i < layout.getVisibleRows(); i++)
 		{
 			final int index = view.getScroll() + i;
-			if (index >= setups.size())
+			if (index >= rows.size())
 			{
 				break;
 			}
-			final SetupEntry setup = setups.get(index);
 			final Rectangle row = layout.getRow(i);
 			row.width = rowWidth;
-
-			final boolean active = setup.getName().equals(view.getActiveSetup());
 			final boolean hovered = mouse != null && row.contains(mouse);
 			final boolean selected = view.isSearchFocused() && index == view.getSelected();
+			if (rows.get(index).isHeader())
+			{
+				paintSectionHeader(g, fm, row, rows.get(index), view.isSectionPages(), hovered, selected);
+				continue;
+			}
+			final SetupEntry setup = rows.get(index).getSetup();
+
+			final boolean active = setup.getName().equals(view.getActiveSetup());
 			if (active)
 			{
 				g.setColor(ROW_ACTIVE);
@@ -216,12 +252,74 @@ public final class PickerPainter
 
 		if (scrollable)
 		{
-			final int barHeight = Math.max(8, list.height * layout.getVisibleRows() / setups.size());
-			final int maxScroll = setups.size() - layout.getVisibleRows();
+			final int barHeight = Math.max(8, list.height * layout.getVisibleRows() / rows.size());
+			final int maxScroll = rows.size() - layout.getVisibleRows();
 			final int barY = list.y + (list.height - barHeight) * view.getScroll() / maxScroll;
 			g.setColor(SCROLLBAR);
 			g.fillRect(list.x + list.width - SCROLLBAR_WIDTH, barY, SCROLLBAR_WIDTH, barHeight);
 		}
+	}
+
+	/**
+	 * @param pickable the heading leads to the section's page, or back from it, so gets an arrow saying which
+	 */
+	private static void paintSectionHeader(Graphics2D g, FontMetrics fm, Rectangle row, PickerRow header,
+		boolean pickable, boolean hovered, boolean selected)
+	{
+		g.setColor(SECTION_BACKGROUND);
+		g.fill(row);
+		if (pickable && (hovered || selected))
+		{
+			g.setColor(ROW_HOVER);
+			g.fill(row);
+		}
+		if (pickable && selected)
+		{
+			g.setColor(ACCENT);
+			g.drawRect(row.x, row.y, row.width - 1, row.height - 1);
+		}
+
+		// muted reads as disabled, which a heading that can be picked isn't
+		final Color color = header.getSectionColor() != null ? header.getSectionColor() : (pickable ? TEXT : TEXT_MUTED);
+		final int cy = row.y + row.height / 2;
+		int textX = row.x + 4;
+		int right = row.x + row.width - 4;
+		g.setColor(color);
+		if (header.isBack())
+		{
+			paintArrow(g, textX, cy, -1);
+			textX += SECTION_ARROW_WIDTH + 4;
+		}
+		else if (pickable)
+		{
+			right -= SECTION_ARROW_WIDTH;
+			paintArrow(g, right, cy, 1);
+			right -= 4;
+		}
+
+		final String name = truncate(fm, header.getSectionName(), right - textX);
+		g.drawString(name, textX, baseline(fm, row));
+
+		// rule filling the rest of the row
+		final int ruleX = textX + fm.stringWidth(name) + 5;
+		if (ruleX < right)
+		{
+			g.setColor(BORDER_INNER);
+			g.drawLine(ruleX, cy, right - 1, cy);
+		}
+	}
+
+	/**
+	 * A small arrowhead with its flat side at x, pointing right for a direction of 1 and left for -1.
+	 */
+	private static void paintArrow(Graphics2D g, int x, int cy, int direction)
+	{
+		final int base = direction > 0 ? x : x + SECTION_ARROW_WIDTH;
+		final Polygon arrow = new Polygon();
+		arrow.addPoint(base, cy - 4);
+		arrow.addPoint(base + direction * SECTION_ARROW_WIDTH, cy);
+		arrow.addPoint(base, cy + 4);
+		g.fill(arrow);
 	}
 
 	private static void paintStar(Graphics2D g, int cx, int cy)

@@ -95,10 +95,31 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 	{
 		final int row = layout.rowAt(e.getPoint());
 		final PickerModel.View view = model.view();
-		final List<SetupEntry> setups = view.getSetups();
-		if (row >= 0 && view.getScroll() + row < setups.size())
+		final List<PickerRow> rows = view.getRows();
+		if (row < 0 || view.getScroll() + row >= rows.size())
 		{
-			plugin.toggleSetup(setups.get(view.getScroll() + row));
+			return;
+		}
+		activate(rows.get(view.getScroll() + row));
+	}
+
+	/**
+	 * Do what picking a row does: open or close its setup, or go to or back from a section's page.
+	 */
+	private void activate(PickerRow row)
+	{
+		if (row.isBack())
+		{
+			model.closeSection();
+		}
+		else if (row.isHeader())
+		{
+			// headings are only for show unless sections have pages
+			model.openSection(row);
+		}
+		else
+		{
+			plugin.toggleSetup(row.getSetup());
 			model.resetSearch();
 		}
 	}
@@ -152,12 +173,18 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 				model.resetSearch();
 				break;
 			case KeyEvent.VK_ENTER:
-				final SetupEntry setup = model.getSelectedSetup();
-				if (setup != null)
+				final PickerRow row = model.getSelectedRow();
+				if (row != null)
 				{
-					plugin.toggleSetup(setup);
+					activate(row);
 				}
-				model.resetSearch();
+				else
+				{
+					model.resetSearch();
+				}
+				break;
+			case KeyEvent.VK_LEFT:
+				model.closeSection();
 				break;
 			case KeyEvent.VK_UP:
 				model.moveSelection(-1);

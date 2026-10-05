@@ -98,6 +98,31 @@ public interface SetupPickerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "groupBySection",
+		name = "Group by section",
+		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
+			+ " Typing a section's name lists its setups.",
+		position = 6
+	)
+	default boolean groupBySection()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "sectionPages",
+		name = "Sections as pages",
+		description = "With Group by section on, list just the sections, and open one to see its setups on a page of"
+			+ " their own. Click the section's name at the top, or press Left or Backspace, to go back. Typing in"
+			+ " the list of sections still searches every setup.",
+		position = 7
+	)
+	default boolean sectionPages()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showBesideBank",
 		name = "Show beside bank",
 		description = "Also show the setup list next to the bank while it is open",
@@ -132,6 +157,18 @@ public interface SetupPickerConfig extends Config
 	default int width()
 	{
 		return 160;
+	}
+
+	@ConfigItem(
+		keyName = "verticalWhenCollapsed",
+		name = "Vertical when collapsed",
+		description = "Show the collapsed list as a narrow upright tab against the bank. When off, it collapses to its title bar.",
+		section = bankSection,
+		position = 3
+	)
+	default boolean verticalWhenCollapsed()
+	{
+		return false;
 	}
 
 	@ConfigItem(
