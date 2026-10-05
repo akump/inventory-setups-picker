@@ -18,6 +18,8 @@ import org.junit.Test;
 public class PickerInputTest
 {
 	private final Canvas canvas = new Canvas();
+	private int platformModifier = InputEvent.CTRL_DOWN_MASK;
+	private boolean requireModifier = true;
 	private PickerModel model;
 	private PickerInput input;
 
@@ -39,6 +41,11 @@ public class PickerInputTest
 			});
 		final SetupPickerConfig config = new SetupPickerConfig()
 		{
+			@Override
+			public boolean requireModifier()
+			{
+				return requireModifier;
+			}
 		};
 		model = new PickerModel();
 		final List<SetupEntry> setups = new ArrayList<>();
@@ -48,7 +55,15 @@ public class PickerInputTest
 		}
 		model.setSetups(setups);
 		model.setVisibleRows(5);
-		input = new PickerInput(client, null, config, new SetupPickerOverlay(client, config, model, null), model);
+		input = new PickerInput(client, null, config, new SetupPickerOverlay(client, config, model, null), model,
+			new PlatformModifier(null)
+			{
+				@Override
+				public int get()
+				{
+					return platformModifier;
+				}
+			});
 	}
 
 	private boolean send(Component target, int id, int modifiers, int keyCode, char keyChar)
@@ -145,5 +160,51 @@ public class PickerInputTest
 		assertFalse(send(sidePanelField, KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_S, 's'));
 		assertFalse(send(sidePanelField, KeyEvent.KEY_TYPED, 0, KeyEvent.VK_UNDEFINED, 's'));
 		assertEquals("", model.view().getQuery());
+	}
+
+	@Test
+	public void hotkeyUsesThePlatformModifier()
+	{
+		platformModifier = InputEvent.META_DOWN_MASK;
+		// Ctrl+K is not the shortcut on a Mac, and neither is K alone or Cmd+Shift+K
+		assertFalse(send(canvas, KeyEvent.KEY_PRESSED, InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_K, (char) 0x0b));
+		assertFalse(send(canvas, KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
+		assertFalse(send(canvas, KeyEvent.KEY_PRESSED, InputEvent.META_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK, KeyEvent.VK_K, 'K'));
+		assertFalse(model.view().isPaletteOpen());
+
+		assertTrue(send(canvas, KeyEvent.KEY_PRESSED, InputEvent.META_DOWN_MASK, KeyEvent.VK_K, 'k'));
+		assertTrue(model.view().isPaletteOpen());
+		// Cmd+K leaves a typed 'k' on some systems; it isn't put in the search box
+		assertTrue(send(canvas, KeyEvent.KEY_TYPED, InputEvent.META_DOWN_MASK, KeyEvent.VK_UNDEFINED, 'k'));
+		assertEquals("", model.view().getQuery());
+
+		assertTrue(send(canvas, KeyEvent.KEY_PRESSED, InputEvent.META_DOWN_MASK, KeyEvent.VK_K, 'k'));
+		assertFalse(model.view().isPaletteOpen());
+	}
+
+	@Test
+	public void hotkeyWithoutModifierStaysTypeable()
+	{
+		requireModifier = false;
+		assertFalse(send(canvas, KeyEvent.KEY_PRESSED, InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_K, (char) 0x0b));
+		assertTrue(send(canvas, KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
+		assertTrue(send(canvas, KeyEvent.KEY_TYPED, 0, KeyEvent.VK_UNDEFINED, 'k'));
+		assertTrue(model.view().isPaletteOpen());
+		assertEquals("", model.view().getQuery());
+
+		// now it's a letter like any other
+		tap(KeyEvent.VK_K, 'k');
+		assertTrue(model.view().isPaletteOpen());
+		assertEquals("k", model.view().getQuery());
+	}
+
+	@Test
+	public void platformKeysProfileOverridesTheComputer()
+	{
+		assertEquals(InputEvent.META_DOWN_MASK, PlatformModifier.resolve(null, true));
+		assertEquals(InputEvent.CTRL_DOWN_MASK, PlatformModifier.resolve(null, false));
+		assertEquals(InputEvent.META_DOWN_MASK, PlatformModifier.resolve("AUTO", true));
+		assertEquals(InputEvent.CTRL_DOWN_MASK, PlatformModifier.resolve("WINDOWS", true));
+		assertEquals(InputEvent.META_DOWN_MASK, PlatformModifier.resolve("MAC", false));
 	}
 }

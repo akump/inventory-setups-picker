@@ -1,6 +1,5 @@
 package com.setuppicker;
 
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -31,13 +30,26 @@ public interface SetupPickerConfig extends Config
 	@ConfigItem(
 		keyName = "hotkey",
 		name = "Open hotkey",
-		description = "Opens the setup list anywhere in game. Type to filter, Up/Down to move, Enter to open the setup"
-			+ " (or close it, if it's the one already open), Esc to cancel.",
+		description = "Opens the setup list anywhere in game. Only the key is used; the modifier comes from the next setting."
+			+ " Type to filter, Up/Down to move, Enter to open the setup (or close it, if it's the one already open),"
+			+ " Esc to cancel.",
 		position = 0
 	)
-	default Keybind hotkey()
+	default Keybind openKey()
 	{
-		return new Keybind(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK);
+		return new Keybind(KeyEvent.VK_K, 0);
+	}
+
+	@ConfigItem(
+		keyName = "requireModifier",
+		name = "Require Ctrl/Cmd",
+		description = "Require the platform modifier (Cmd on Mac, Ctrl on Windows) together with the open hotkey."
+			+ " Follows the Platform Keys plugin's key profile when that plugin is on.",
+		position = 1
+	)
+	default boolean requireModifier()
+	{
+		return true;
 	}
 
 	@Range(min = 3, max = 25)
@@ -45,7 +57,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "popupRows",
 		name = "Popup rows",
 		description = "How many setups the popup shows before it scrolls",
-		position = 1
+		position = 2
 	)
 	default int popupRows()
 	{
@@ -56,7 +68,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "showIcons",
 		name = "Show icons",
 		description = "Show each setup's icon next to its name",
-		position = 2
+		position = 3
 	)
 	default boolean showIcons()
 	{
@@ -67,7 +79,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "favoritesFirst",
 		name = "Favorites first",
 		description = "List favorited setups before the rest",
-		position = 3
+		position = 4
 	)
 	default boolean favoritesFirst()
 	{

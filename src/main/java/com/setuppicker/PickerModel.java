@@ -103,6 +103,7 @@ public class PickerModel
 	private int scroll;
 	private int selected;
 	private int visibleRows = 1;
+	private int scrollBeforePalette;
 
 	public synchronized View view()
 	{
@@ -112,7 +113,8 @@ public class PickerModel
 	public synchronized void setSetups(List<SetupEntry> newSetups)
 	{
 		setups = Collections.unmodifiableList(new ArrayList<>(newSetups));
-		refilter();
+		// a reload (e.g. after a setup is edited) shouldn't move the list under the user
+		refilter(false);
 	}
 
 	public synchronized void setActiveSetup(String name)
@@ -153,16 +155,20 @@ public class PickerModel
 	 */
 	public synchronized void openPalette()
 	{
+		if (!paletteOpen)
+		{
+			scrollBeforePalette = query.isEmpty() ? scroll : 0;
+		}
 		paletteOpen = true;
 		searchFocused = true;
 		query = "";
-		refilter();
+		refilter(true);
 	}
 
 	public synchronized void typeChar(char c)
 	{
 		query += c;
-		refilter();
+		refilter(true);
 	}
 
 	public synchronized void backspace()
@@ -170,7 +176,7 @@ public class PickerModel
 		if (!query.isEmpty())
 		{
 			query = query.substring(0, query.length() - 1);
-			refilter();
+			refilter(true);
 		}
 	}
 
@@ -210,13 +216,25 @@ public class PickerModel
 	 */
 	public synchronized void resetSearch()
 	{
+		// Back to the full list. If it was already showing, as when a setup is clicked in the list beside
+		// the bank, it stays scrolled where it was.
+		final boolean wasFiltered = !query.isEmpty();
 		searchFocused = false;
-		paletteOpen = false;
 		query = "";
-		refilter();
+		refilter(wasFiltered);
+		if (paletteOpen)
+		{
+			// the popup scrolls on its own; put the list beside the bank back where it was left
+			paletteOpen = false;
+			scroll = scrollBeforePalette;
+			clamp();
+		}
 	}
 
-	private void refilter()
+	/**
+	 * @param resetPosition go back to the top, for when what's listed has changed because of the search
+	 */
+	private void refilter(boolean resetPosition)
 	{
 		if (query.isEmpty())
 		{
@@ -235,8 +253,12 @@ public class PickerModel
 			}
 			filtered = Collections.unmodifiableList(matches);
 		}
-		selected = 0;
-		scroll = 0;
+		if (resetPosition)
+		{
+			selected = 0;
+			scroll = 0;
+		}
+		clamp();
 	}
 
 	private void clamp()

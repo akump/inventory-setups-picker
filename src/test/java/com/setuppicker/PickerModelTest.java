@@ -125,4 +125,41 @@ public class PickerModelTest
 		assertEquals(2, model.view().getSetups().size());
 		assertEquals("vor", model.view().getQuery());
 	}
+
+	@Test
+	public void pickingFromTheUnfilteredListKeepsItsScrollPosition()
+	{
+		model.scrollBy(4);
+		// what clicking a row does, followed by the reload Inventory Setups' config change triggers
+		model.resetSearch();
+		assertEquals(4, model.view().getScroll());
+		model.setSetups(new ArrayList<>(model.view().getSetups()));
+		assertEquals(4, model.view().getScroll());
+
+		// the popup starts at the top, and leaves the list beside the bank where it was
+		model.openPalette();
+		assertEquals(0, model.view().getScroll());
+		type("s");
+		model.resetSearch();
+		assertEquals(4, model.view().getScroll());
+	}
+
+	@Test
+	public void clearingAFilterGoesBackToTheTop()
+	{
+		model.setSearchFocused(true);
+		type("a");
+		model.scrollBy(1);
+		model.resetSearch();
+		assertEquals(0, model.view().getScroll());
+	}
+
+	@Test
+	public void scrollIsPulledBackWhenTheListShrinks()
+	{
+		model.scrollBy(4);
+		final List<SetupEntry> fewer = new ArrayList<>(model.view().getSetups().subList(0, 4));
+		model.setSetups(fewer);
+		assertEquals(1, model.view().getScroll());
+	}
 }

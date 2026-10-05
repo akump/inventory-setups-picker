@@ -1,6 +1,7 @@
 package com.setuppicker;
 
 import java.awt.KeyEventDispatcher;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
@@ -27,19 +28,25 @@ import net.runelite.client.input.MouseWheelListener;
 @Singleton
 public class PickerInput extends MouseAdapter implements KeyEventDispatcher, MouseWheelListener
 {
+	private static final int MODIFIER_MASK = InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK
+		| InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK;
+
 	private final Client client;
 	private final SetupPickerPlugin plugin;
 	private final SetupPickerConfig config;
 	private final SetupPickerOverlay overlay;
 	private final PickerModel model;
+	private final PlatformModifier platformModifier;
 
 	// The hotkey's own key press can also produce a typed character, which shouldn't end up in the search box
 	private boolean swallowNextTyped;
 	private final Set<Integer> swallowedPresses = new HashSet<>();
 
 	@Inject
-	PickerInput(Client client, SetupPickerPlugin plugin, SetupPickerConfig config, SetupPickerOverlay overlay, PickerModel model)
+	PickerInput(Client client, SetupPickerPlugin plugin, SetupPickerConfig config, SetupPickerOverlay overlay,
+		PickerModel model, PlatformModifier platformModifier)
 	{
+		this.platformModifier = platformModifier;
 		this.client = client;
 		this.plugin = plugin;
 		this.config = config;
@@ -150,7 +157,7 @@ public class PickerInput extends MouseAdapter implements KeyEventDispatcher, Mou
 
 	private boolean keyPressed(KeyEvent e)
 	{
-		if (config.hotkey().matches(e))
+		if (isHotkey(e))
 		{
 			if (model.view().isPaletteOpen())
 			{
@@ -210,6 +217,21 @@ public class PickerInput extends MouseAdapter implements KeyEventDispatcher, Mou
 				break;
 		}
 		return true;
+	}
+
+	private boolean isHotkey(KeyEvent e)
+	{
+		if (e.getKeyCode() != config.openKey().getKeyCode() || e.getKeyCode() == KeyEvent.VK_UNDEFINED)
+		{
+			return false;
+		}
+		final int wanted = config.requireModifier() ? platformModifier.get() : 0;
+		if ((e.getModifiersEx() & MODIFIER_MASK) != wanted)
+		{
+			return false;
+		}
+		// Without a modifier the hotkey is a plain key, which has to stay typeable in the search box
+		return wanted != 0 || !model.view().isSearchFocused();
 	}
 
 	private boolean keyTyped(KeyEvent e)
