@@ -58,9 +58,11 @@ public class SetupRepository
 	}
 
 	/**
-	 * All setups, sorted by name. Empty if Inventory Setups isn't running.
+	 * All setups. Empty if Inventory Setups isn't running.
+	 *
+	 * @param alphabetical sort by name, rather than keeping the order of Inventory Setups' own list
 	 */
-	public List<SetupEntry> loadSetups(boolean favoritesFirst)
+	public List<SetupEntry> loadSetups(boolean alphabetical, boolean favoritesFirst)
 	{
 		// post() is synchronous: Inventory Setups fills the collection before it returns
 		final List<String> names = new ArrayList<>();
@@ -74,15 +76,18 @@ public class SetupRepository
 			final String hash = Hashing.murmur3_128().hashUnencodedChars(name).toString();
 			setups.add(parseSetup(gson, name, configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_SETUP_PREFIX + hash)));
 		}
-		return Collections.unmodifiableList(sort(setups, favoritesFirst));
+		return Collections.unmodifiableList(sort(setups, alphabetical, favoritesFirst));
 	}
 
-	static List<SetupEntry> sort(List<SetupEntry> setups, boolean favoritesFirst)
+	static List<SetupEntry> sort(List<SetupEntry> setups, boolean alphabetical, boolean favoritesFirst)
 	{
-		setups.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare(a.getName(), b.getName()));
+		if (alphabetical)
+		{
+			setups.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare(a.getName(), b.getName()));
+		}
 		if (favoritesFirst)
 		{
-			// stable, so favorites and the rest each stay alphabetical
+			// stable, so favorites and the rest each keep the order they have by now
 			setups.sort((a, b) -> Boolean.compare(b.isFavorite(), a.isFavorite()));
 		}
 		return setups;

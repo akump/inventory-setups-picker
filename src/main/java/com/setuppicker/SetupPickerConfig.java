@@ -76,10 +76,21 @@ public interface SetupPickerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "alphabetical",
+		name = "Sort alphabetically",
+		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list.",
+		position = 4
+	)
+	default boolean alphabetical()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "favoritesFirst",
 		name = "Favorites first",
 		description = "List favorited setups before the rest",
-		position = 4
+		position = 5
 	)
 	default boolean favoritesFirst()
 	{

@@ -2,11 +2,11 @@ package com.setuppicker;
 
 import com.google.inject.Binder;
 import com.google.inject.Provides;
-import java.awt.KeyboardFocusManager;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 import net.runelite.api.GameState;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
@@ -18,6 +18,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.events.PluginMessage;
 import net.runelite.client.events.ProfileChanged;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -47,6 +48,12 @@ public class SetupPickerPlugin extends Plugin
 
 	@Inject
 	private MouseManager mouseManager;
+
+	@Inject
+	private KeyManager keyManager;
+
+	@Inject
+	private ChatboxKeyGuard chatboxKeyGuard;
 
 	@Inject
 	private SetupPickerConfig config;
@@ -83,7 +90,7 @@ public class SetupPickerPlugin extends Plugin
 		overlayManager.add(overlay);
 		mouseManager.registerMouseListener(input);
 		mouseManager.registerMouseWheelListener(input);
-		KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(input);
+		keyManager.registerKeyListener(input);
 
 		queueRefresh();
 		// Inventory Setups only announces the active setup when it changes, so ask once for the current one
@@ -96,7 +103,8 @@ public class SetupPickerPlugin extends Plugin
 		overlayManager.remove(overlay);
 		mouseManager.unregisterMouseListener(input);
 		mouseManager.unregisterMouseWheelListener(input);
-		KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(input);
+		keyManager.unregisterKeyListener(input);
+		clientThread.invoke(chatboxKeyGuard::restore);
 		overlay.clearLayout();
 		model.resetSearch();
 	}
@@ -166,6 +174,12 @@ public class SetupPickerPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onClientTick(ClientTick event)
+	{
+		chatboxKeyGuard.sync(model.view().isSearchFocused());
+	}
+
+	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		// Nothing is drawn outside the game, so don't leave the keyboard captured by an invisible popup
@@ -209,7 +223,7 @@ public class SetupPickerPlugin extends Plugin
 			clientThread.invokeLater(() ->
 			{
 				refreshQueued.set(false);
-				final List<SetupEntry> setups = repository.loadSetups(config.favoritesFirst());
+				final List<SetupEntry> setups = repository.loadSetups(config.alphabetical(), config.favoritesFirst());
 				model.setSetups(setups);
 				overlay.setStatus(isInventorySetupsEnabled() ? "No setups yet" : "Inventory Setups is off");
 			});

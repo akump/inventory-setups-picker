@@ -60,7 +60,7 @@ public class SetupRepositoryTest
 		}
 	}
 
-	private static List<String> sortedNames(boolean favoritesFirst)
+	private static List<String> sortedNames(boolean alphabetical, boolean favoritesFirst)
 	{
 		final List<SetupEntry> setups = new ArrayList<>();
 		setups.add(new SetupEntry("Zulrah", false, null, 1));
@@ -68,13 +68,15 @@ public class SetupRepositoryTest
 		setups.add(new SetupEntry("Vorkath", true, null, 1));
 		setups.add(new SetupEntry("Araxxor", true, null, 1));
 		setups.add(new SetupEntry("Cerberus", false, null, 1));
-		return SetupRepository.sort(setups, favoritesFirst).stream().map(SetupEntry::getName).collect(Collectors.toList());
+		return SetupRepository.sort(setups, alphabetical, favoritesFirst).stream().map(SetupEntry::getName).collect(Collectors.toList());
 	}
 
 	@Test
 	public void sortsByNameIgnoringCaseWithFavoritesOnTop()
 	{
-		assertEquals(Arrays.asList("Araxxor", "barrows", "Cerberus", "Vorkath", "Zulrah"), sortedNames(false));
-		assertEquals(Arrays.asList("Araxxor", "Vorkath", "barrows", "Cerberus", "Zulrah"), sortedNames(true));
+		assertEquals(Arrays.asList("Araxxor", "barrows", "Cerberus", "Vorkath", "Zulrah"), sortedNames(true, false));
+		assertEquals(Arrays.asList("Araxxor", "Vorkath", "barrows", "Cerberus", "Zulrah"), sortedNames(true, true));
+		assertEquals(Arrays.asList("Vorkath", "Araxxor", "Zulrah", "barrows", "Cerberus"), sortedNames(false, true));
+		assertEquals(Arrays.asList("Zulrah", "barrows", "Vorkath", "Araxxor", "Cerberus"), sortedNames(false, false));
 	}
 }

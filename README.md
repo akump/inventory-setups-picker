@@ -32,8 +32,8 @@ can be turned off in the plugin's settings.
 
 ## Requirements
 
-Inventory Setups must be installed and enabled. Setups are listed alphabetically
-(optionally favorites first), with the icon and color you gave them there.
+Inventory Setups must be installed and enabled. Setups are listed alphabetically,
+or in Inventory Setups' own order if you turn that off (optionally favorites first), with the icon and color you gave them there.
 
 ## Development
 
