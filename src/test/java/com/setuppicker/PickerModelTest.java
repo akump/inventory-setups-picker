@@ -351,4 +351,90 @@ public class PickerModelTest
 		model.openSection(model.view().getRows().get(0));
 		assertEquals(8, model.view().getRows().size());
 	}
+
+	@Test
+	public void popupStartsOnTheOpenSetup()
+	{
+		model.setActiveSetup("Slayer melee");
+		model.openPalette();
+		assertEquals("Slayer melee", model.getSelectedSetup().getName());
+		// and it is scrolled into view once the popup knows how many rows it shows
+		model.setVisibleRows(3);
+		assertEquals(3, model.view().getScroll());
+		assertTrue(model.view().getSelected() < model.view().getScroll() + 3);
+
+		// scrolling away with the wheel isn't fought
+		model.scrollBy(-3);
+		model.setVisibleRows(3);
+		assertEquals(0, model.view().getScroll());
+
+		// searching goes back to the best match as usual
+		type("v");
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+	}
+
+	@Test
+	public void popupStartsAtTheTopWithNothingOpen()
+	{
+		model.openPalette();
+		assertEquals(0, model.view().getSelected());
+		model.setActiveSetup("A setup that was deleted");
+		model.openPalette();
+		assertEquals(0, model.view().getSelected());
+	}
+
+	@Test
+	public void fuzzySearchOnlyStepsInWhenNothingMatches()
+	{
+		model.setFuzzySearch(true);
+		model.openPalette();
+		// an exact match is all that's shown, though "Vardorvis" has v, o, r in order too
+		type("vor");
+		assertEquals(1, model.view().getRows().size());
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+		model.resetSearch();
+
+		// a wrong letter, a missing one, and two swapped
+		for (String typo : new String[]{"vorkahh", "zulah", "slyaer"})
+		{
+			model.openPalette();
+			type(typo);
+			assertFalse(typo, model.view().getRows().isEmpty());
+			model.resetSearch();
+		}
+		model.openPalette();
+		type("zulah");
+		assertEquals("Zulrah", model.getSelectedSetup().getName());
+		model.resetSearch();
+
+		// letters in order
+		model.openPalette();
+		type("brws");
+		assertEquals("Barrows", model.getSelectedSetup().getName());
+		model.resetSearch();
+
+		// nothing like it at all
+		model.openPalette();
+		type("qqqq");
+		assertTrue(model.view().getRows().isEmpty());
+	}
+
+	@Test
+	public void fuzzySearchCanBeTurnedOff()
+	{
+		model.setFuzzySearch(false);
+		model.openPalette();
+		type("zulah");
+		assertTrue(model.view().getRows().isEmpty());
+	}
+
+	@Test
+	public void startingOnTheOpenSetupCanBeTurnedOff()
+	{
+		model.setStartOnActiveSetup(false);
+		model.setActiveSetup("Slayer melee");
+		model.openPalette();
+		assertEquals(0, model.view().getSelected());
+		assertEquals(0, model.view().getScroll());
+	}
 }

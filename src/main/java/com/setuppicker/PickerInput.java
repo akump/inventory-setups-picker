@@ -167,6 +167,13 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 			return;
 		}
 
+		if (isSelectAll(e, code))
+		{
+			model.selectQuery();
+			swallow(e, code);
+			return;
+		}
+
 		switch (code)
 		{
 			case KeyEvent.VK_ESCAPE:
@@ -184,7 +191,27 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 				}
 				break;
 			case KeyEvent.VK_LEFT:
-				model.closeSection();
+				if (model.view().getQuery().isEmpty())
+				{
+					// nothing to move through: back out of the section's page
+					model.closeSection();
+				}
+				else
+				{
+					model.moveCaret(-1);
+				}
+				break;
+			case KeyEvent.VK_RIGHT:
+				model.moveCaret(1);
+				break;
+			case KeyEvent.VK_HOME:
+				model.moveCaret(-Integer.MAX_VALUE);
+				break;
+			case KeyEvent.VK_END:
+				model.moveCaret(Integer.MAX_VALUE);
+				break;
+			case KeyEvent.VK_DELETE:
+				model.deleteForward();
 				break;
 			case KeyEvent.VK_UP:
 				model.moveSelection(-1);
@@ -293,6 +320,13 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 			default:
 				return 0;
 		}
+	}
+
+	// Ctrl+A or Cmd+A. Either is taken on any platform, as neither means anything else in the search box.
+	private static boolean isSelectAll(KeyEvent e, int code)
+	{
+		final int modifiers = e.getModifiersEx() & MODIFIER_MASK;
+		return code == KeyEvent.VK_A && (modifiers == InputEvent.CTRL_DOWN_MASK || modifiers == InputEvent.META_DOWN_MASK);
 	}
 
 	private boolean isHotkey(KeyEvent e, int code)

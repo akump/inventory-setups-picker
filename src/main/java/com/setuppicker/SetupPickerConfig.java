@@ -15,6 +15,7 @@ public interface SetupPickerConfig extends Config
 {
 	String GROUP = "setuppicker";
 	String KEY_COLLAPSED = "collapsed";
+	String KEY_RECENT = "recentSetups";
 
 	enum Side
 	{
@@ -25,7 +26,7 @@ public interface SetupPickerConfig extends Config
 	@ConfigSection(
 		name = "Beside the bank",
 		description = "The list shown next to the bank interface",
-		position = 10
+		position = 20
 	)
 	String bankSection = "bank";
 
@@ -54,12 +55,24 @@ public interface SetupPickerConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "startOnOpenSetup",
+		name = "Start on open setup",
+		description = "When a setup is already open, the popup opens with it selected, so pressing Enter closes it."
+			+ " When off, the selection always starts at the top.",
+		position = 2
+	)
+	default boolean startOnOpenSetup()
+	{
+		return true;
+	}
+
 	@Range(min = 3, max = 25)
 	@ConfigItem(
 		keyName = "popupRows",
 		name = "Popup rows",
 		description = "How many setups the popup shows before it scrolls",
-		position = 2
+		position = 3
 	)
 	default int popupRows()
 	{
@@ -70,7 +83,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "showIcons",
 		name = "Show icons",
 		description = "Show each setup's icon next to its name",
-		position = 3
+		position = 4
 	)
 	default boolean showIcons()
 	{
@@ -81,7 +94,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "alphabetical",
 		name = "Sort alphabetically",
 		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list.",
-		position = 4
+		position = 5
 	)
 	default boolean alphabetical()
 	{
@@ -92,9 +105,34 @@ public interface SetupPickerConfig extends Config
 		keyName = "favoritesFirst",
 		name = "Favorites first",
 		description = "List favorited setups before the rest",
-		position = 5
+		position = 6
 	)
 	default boolean favoritesFirst()
+	{
+		return true;
+	}
+
+	@Range(max = 10)
+	@ConfigItem(
+		keyName = "recentCount",
+		name = "Recently used",
+		description = "How many of the setups you opened most recently to list at the top, latest first and marked"
+			+ " with a clock. With Group by section on they get a Recent heading. 0 turns this off.",
+		position = 7
+	)
+	default int recentCount()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "fuzzySearch",
+		name = "Fuzzy search",
+		description = "When a search finds nothing as typed, also match names that are a typo away (\"vorkahh\") or that"
+			+ " have the typed letters in order (\"vkdh\")",
+		position = 8
+	)
+	default boolean fuzzySearch()
 	{
 		return true;
 	}
@@ -104,7 +142,7 @@ public interface SetupPickerConfig extends Config
 		name = "Group by section",
 		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
 			+ " Typing a section's name lists its setups.",
-		position = 6
+		position = 9
 	)
 	default boolean groupBySection()
 	{
@@ -117,7 +155,7 @@ public interface SetupPickerConfig extends Config
 		description = "With Group by section on, list just the sections, and open one to see its setups on a page of"
 			+ " their own. Click the section's name at the top, or press Left or Backspace, to go back. Typing in"
 			+ " the list of sections still searches every setup.",
-		position = 7
+		position = 10
 	)
 	default boolean sectionPages()
 	{
@@ -176,7 +214,7 @@ public interface SetupPickerConfig extends Config
 	@ConfigSection(
 		name = "Colors",
 		description = "Colors of the popup and the list beside the bank, for matching a resource pack",
-		position = 20,
+		position = 30,
 		closedByDefault = true
 	)
 	String colorSection = "colors";

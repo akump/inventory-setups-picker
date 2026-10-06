@@ -28,8 +28,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 	name = "Inventory Setups Picker",
-	description = "Open your Inventory Setups from a hotkey-driven, searchable list in game",
-	tags = {"inventory", "setups", "bank", "gear", "picker", "hotkey", "search"}
+	description = "Hotkey search for your Inventory Setups: open any setup by typing its name",
+	tags = {"inventory", "setups", "loadout", "preset", "gear", "bank", "hotkey", "search", "quick", "switch", "picker"}
 )
 public class SetupPickerPlugin extends Plugin
 {
@@ -124,7 +124,19 @@ public class SetupPickerPlugin extends Plugin
 		else if (SetupRepository.MSG_ACTIVE_SETUP_CHANGED.equals(message.getName()))
 		{
 			final Object active = message.getData().get(SetupRepository.DATA_ACTIVE_SETUP);
-			model.setActiveSetup(active instanceof String ? (String) active : "");
+			final String name = active instanceof String ? (String) active : "";
+			model.setActiveSetup(name);
+			if (!name.isEmpty() && config.recentCount() > 0)
+			{
+				// This message also comes for every edit to the open setup, which leaves the list as it is.
+				// Saving it is a config change of this plugin's, which reloads the list in its new order.
+				final List<String> recent = repository.loadRecent();
+				final List<String> updated = SetupRepository.markUsed(recent, name);
+				if (updated != recent)
+				{
+					repository.saveRecent(updated);
+				}
+			}
 		}
 	}
 
@@ -226,10 +238,14 @@ public class SetupPickerPlugin extends Plugin
 			clientThread.invokeLater(() ->
 			{
 				refreshQueued.set(false);
+				final List<String> used = repository.loadRecent();
+				final List<String> recent = used.subList(0, Math.max(0, Math.min(config.recentCount(), used.size())));
 				final List<SetupEntry> setups = repository.loadSetups(config.alphabetical(), config.favoritesFirst());
 				final List<SetupSection> sections = config.groupBySection() ? repository.loadSections() : Collections.emptyList();
 				model.setSectionPages(config.sectionPages());
-				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst()), setups.size());
+				model.setFuzzySearch(config.fuzzySearch());
+				model.setStartOnActiveSetup(config.startOnOpenSetup());
+				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst(), recent), setups.size());
 				overlay.setStatus(isInventorySetupsEnabled() ? "No setups yet" : "Inventory Setups is off");
 			});
 		}

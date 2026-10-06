@@ -248,4 +248,82 @@ public class PickerInputTest
 		assertEquals(InputEvent.CTRL_DOWN_MASK, PlatformModifier.resolve("WINDOWS", true));
 		assertEquals(InputEvent.META_DOWN_MASK, PlatformModifier.resolve("MAC", false));
 	}
+
+	@Test
+	public void selectAllHighlightsTheSearchTextForReplacing()
+	{
+		openWithHotkey();
+		tap(KeyEvent.VK_S, 's');
+		tap(KeyEvent.VK_L, 'l');
+
+		// Cmd+A, then typing replaces what was there
+		assertTrue(send(KeyEvent.KEY_PRESSED, InputEvent.META_DOWN_MASK, KeyEvent.VK_A, 'a'));
+		assertTrue(model.view().isQuerySelected());
+		assertEquals("sl", model.view().getQuery());
+		tap(KeyEvent.VK_Z, 'z');
+		assertEquals("z", model.view().getQuery());
+		assertFalse(model.view().isQuerySelected());
+
+		// Ctrl+A, then Backspace clears it in one go
+		tap(KeyEvent.VK_U, 'u');
+		assertTrue(send(KeyEvent.KEY_PRESSED, InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_A, (char) 1));
+		assertTrue(model.view().isQuerySelected());
+		tap(KeyEvent.VK_BACK_SPACE, '\b');
+		assertEquals("", model.view().getQuery());
+		assertFalse(model.view().isQuerySelected());
+
+		// nothing to highlight in an empty box, and a plain "a" is still just a letter
+		assertTrue(send(KeyEvent.KEY_PRESSED, InputEvent.META_DOWN_MASK, KeyEvent.VK_A, 'a'));
+		assertFalse(model.view().isQuerySelected());
+		tap(KeyEvent.VK_A, 'a');
+		assertEquals("a", model.view().getQuery());
+	}
+
+	private void press(int keyCode)
+	{
+		assertTrue(send(KeyEvent.KEY_PRESSED, 0, keyCode, KeyEvent.CHAR_UNDEFINED));
+		assertTrue(send(KeyEvent.KEY_RELEASED, 0, keyCode, KeyEvent.CHAR_UNDEFINED));
+	}
+
+	@Test
+	public void cursorMovesThroughTheSearchText()
+	{
+		openWithHotkey();
+		tap(KeyEvent.VK_S, 's');
+		tap(KeyEvent.VK_A, 'a');
+		tap(KeyEvent.VK_Y, 'y');
+		assertEquals(3, model.view().getCaret());
+
+		// back one and insert the missing letter
+		press(KeyEvent.VK_LEFT);
+		press(KeyEvent.VK_LEFT);
+		tap(KeyEvent.VK_L, 'l');
+		assertEquals("slay", model.view().getQuery());
+		assertEquals(2, model.view().getCaret());
+		assertEquals("Slayer", model.getSelectedSetup().getName());
+
+		// Backspace takes the letter before the cursor, Delete the one after
+		tap(KeyEvent.VK_BACK_SPACE, '\b');
+		assertEquals("say", model.view().getQuery());
+		tap(KeyEvent.VK_DELETE, (char) KeyEvent.VK_DELETE);
+		assertEquals("sy", model.view().getQuery());
+		assertEquals(1, model.view().getCaret());
+
+		// the ends, which it doesn't run past
+		press(KeyEvent.VK_HOME);
+		press(KeyEvent.VK_LEFT);
+		assertEquals(0, model.view().getCaret());
+		tap(KeyEvent.VK_BACK_SPACE, '\b');
+		assertEquals("sy", model.view().getQuery());
+		press(KeyEvent.VK_END);
+		press(KeyEvent.VK_RIGHT);
+		assertEquals(2, model.view().getCaret());
+
+		// after select all, an arrow drops the highlight and goes to that end
+		assertTrue(send(KeyEvent.KEY_PRESSED, InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_A, (char) 1));
+		press(KeyEvent.VK_LEFT);
+		assertFalse(model.view().isQuerySelected());
+		assertEquals(0, model.view().getCaret());
+		assertEquals("sy", model.view().getQuery());
+	}
 }

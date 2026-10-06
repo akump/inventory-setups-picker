@@ -27,6 +27,7 @@ public final class PickerPainter
 	private static final int ICON_WIDTH = 18;
 	private static final int ICON_HEIGHT = 16;
 	private static final int STAR_SIZE = 7;
+	private static final int CLOCK_SIZE = 9;
 	private static final int SCROLLBAR_WIDTH = 3;
 	private static final int SECTION_ARROW_WIDTH = 5;
 
@@ -156,18 +157,32 @@ public final class PickerPainter
 			return;
 		}
 
-		// show the end of a long query, since that's where the typing happens
-		String query = view.getQuery();
-		while (!query.isEmpty() && fm.stringWidth(query) > maxWidth - 4)
+		// A search too long for the box is shown from far enough in to keep the cursor in view
+		final String query = view.getQuery();
+		final int caret = Math.min(view.getCaret(), query.length());
+		int start = 0;
+		while (start < caret && fm.stringWidth(query.substring(start, caret)) > maxWidth - 4)
 		{
-			query = query.substring(1);
+			start++;
+		}
+		int end = query.length();
+		while (end > caret && fm.stringWidth(query.substring(start, end)) > maxWidth - 4)
+		{
+			end--;
+		}
+		final String shown = query.substring(start, end);
+
+		if (view.isQuerySelected())
+		{
+			g.setColor(theme.getActiveRow());
+			g.fillRect(textX - 1, search.y + 3, fm.stringWidth(shown) + 2, search.height - 6);
 		}
 		g.setColor(theme.getText());
-		g.drawString(query, textX, baseline(fm, search));
+		g.drawString(shown, textX, baseline(fm, search));
 
 		if (view.isSearchFocused() && System.currentTimeMillis() / 500 % 2 == 0)
 		{
-			final int caretX = textX + fm.stringWidth(query) + 1;
+			final int caretX = textX + fm.stringWidth(query.substring(start, caret)) + (caret == start ? 0 : 1);
 			g.drawLine(caretX, search.y + 4, caretX, search.y + search.height - 5);
 		}
 	}
@@ -240,6 +255,11 @@ public final class PickerPainter
 			{
 				textRight -= STAR_SIZE + 3;
 				paintStar(g, textRight + 3 + STAR_SIZE / 2, row.y + row.height / 2);
+			}
+			if (rows.get(index).isRecent())
+			{
+				textRight -= CLOCK_SIZE + 3;
+				paintClock(g, textRight + 3 + CLOCK_SIZE / 2, row.y + row.height / 2);
 			}
 
 			g.setColor(setup.getDisplayColor() != null ? setup.getDisplayColor() : (active ? theme.getAccent() : theme.getText()));
@@ -316,6 +336,18 @@ public final class PickerPainter
 		arrow.addPoint(base + direction * SECTION_ARROW_WIDTH, cy);
 		arrow.addPoint(base, cy + 4);
 		g.fill(arrow);
+	}
+
+	/**
+	 * Marks a recently used setup: a clock face showing about three o'clock.
+	 */
+	private void paintClock(Graphics2D g, int cx, int cy)
+	{
+		final int radius = CLOCK_SIZE / 2;
+		g.setColor(theme.getMutedText());
+		g.drawOval(cx - radius, cy - radius, CLOCK_SIZE - 1, CLOCK_SIZE - 1);
+		g.drawLine(cx, cy, cx, cy - radius + 2);
+		g.drawLine(cx, cy, cx + radius - 2, cy);
 	}
 
 	private void paintStar(Graphics2D g, int cx, int cy)

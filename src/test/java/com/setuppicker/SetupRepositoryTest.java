@@ -139,4 +139,64 @@ public class SetupRepositoryTest
 		assertEquals(Arrays.asList("Zulrah", "Barrows", "Vorkath", "Araxxor"),
 			groupedNames(Arrays.asList(new SetupSection("Empty", null, Arrays.asList("Deleted setup"))), false, false));
 	}
+
+	private static String describe(List<PickerRow> rows)
+	{
+		return rows.stream()
+			.map(row -> row.isHeader() ? "[" + row.getSectionName() + "]" : row.getSetup().getName() + (row.isRecent() ? "*" : ""))
+			.collect(Collectors.joining(" "));
+	}
+
+	private static List<SetupEntry> fiveSetups()
+	{
+		final List<SetupEntry> setups = new ArrayList<>();
+		setups.add(new SetupEntry("Zulrah", false, null, 1));
+		setups.add(new SetupEntry("barrows", false, null, 1));
+		setups.add(new SetupEntry("Vorkath", true, null, 1));
+		setups.add(new SetupEntry("Araxxor", true, null, 1));
+		setups.add(new SetupEntry("Cerberus", false, null, 1));
+		return SetupRepository.sort(setups, true, true);
+	}
+
+	@Test
+	public void recentlyUsedAreMovedToTheTopOfAPlainList()
+	{
+		// latest first, ahead even of favorites; a name that no longer exists is ignored
+		final List<String> recent = Arrays.asList("Cerberus", "Deleted setup", "Zulrah");
+		assertEquals("Cerberus* Zulrah* Araxxor Vorkath barrows",
+			describe(SetupRepository.group(fiveSetups(), new ArrayList<>(), true, true, recent)));
+
+		// nothing used yet: the usual order
+		assertEquals("Araxxor Vorkath barrows Cerberus Zulrah",
+			describe(SetupRepository.group(fiveSetups(), new ArrayList<>(), true, true, new ArrayList<>())));
+	}
+
+	@Test
+	public void recentlyUsedGetAHeadingWhenTheListIsInSections()
+	{
+		final List<SetupSection> sections = Arrays.asList(new SetupSection("Bossing", null, Arrays.asList("Zulrah", "Vorkath")));
+		// they stay in their own sections too
+		assertEquals("[Recent] Cerberus* Zulrah* [Bossing] Vorkath Zulrah [Unassigned] Araxxor barrows Cerberus",
+			describe(SetupRepository.group(fiveSetups(), sections, true, true, Arrays.asList("Cerberus", "Zulrah"))));
+		assertTrue(PickerRow.RECENT.isBuiltIn());
+	}
+
+	@Test
+	public void markingASetupUsedMovesItToTheFront()
+	{
+		List<String> recent = new ArrayList<>();
+		recent = SetupRepository.markUsed(recent, "Zulrah");
+		recent = SetupRepository.markUsed(recent, "Vorkath");
+		recent = SetupRepository.markUsed(recent, "Zulrah");
+		assertEquals(Arrays.asList("Zulrah", "Vorkath"), recent);
+		// already at the front: nothing to save
+		assertTrue(recent == SetupRepository.markUsed(recent, "Zulrah"));
+
+		for (int i = 0; i < 30; i++)
+		{
+			recent = SetupRepository.markUsed(recent, "Setup " + i);
+		}
+		assertEquals(10, recent.size());
+		assertEquals("Setup 29", recent.get(0));
+	}
 }

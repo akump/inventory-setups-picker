@@ -23,12 +23,16 @@ public class PickerModel
 		private final boolean searchFocused;
 		private final boolean paletteOpen;
 		private final boolean sectionPages;
+		private final boolean querySelected;
+		private final int caret;
 		private final int scroll;
 		private final int selected;
 
 		private View(List<PickerRow> rows, int total, String activeSetup, String query, boolean searchFocused,
-			boolean paletteOpen, boolean sectionPages, int scroll, int selected)
+			boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected, int caret)
 		{
+			this.caret = caret;
+			this.querySelected = querySelected;
 			this.sectionPages = sectionPages;
 			this.rows = rows;
 			this.total = total;
@@ -65,6 +69,22 @@ public class PickerModel
 		public String getQuery()
 		{
 			return query;
+		}
+
+		/**
+		 * Whether the whole search text is highlighted, after select all: the next thing typed replaces it.
+		 */
+		public boolean isQuerySelected()
+		{
+			return querySelected;
+		}
+
+		/**
+		 * Where in the search text typing goes: the number of characters before the cursor.
+		 */
+		public int getCaret()
+		{
+			return caret;
 		}
 
 		public boolean isSearchFocused()
@@ -116,6 +136,12 @@ public class PickerModel
 	private int scroll;
 	private int selected;
 	private int visibleRows = 1;
+	private boolean fuzzySearch;
+	private boolean querySelected;
+	private int caret;
+	private boolean startOnActiveSetup = true;
+	// Set while the popup should keep its starting selection in view, until the user scrolls or searches
+	private boolean revealSelection;
 	private int scrollBeforePalette;
 	private boolean sectionPages;
 	// heading of the section whose page is showing, or null for the list of sections
@@ -124,7 +150,8 @@ public class PickerModel
 
 	public synchronized View view()
 	{
-		return new View(filtered, total, activeSetup, query, searchFocused, paletteOpen, isPaged(), scroll, selected);
+		return new View(filtered, total, activeSetup, query, searchFocused, paletteOpen, isPaged(), scroll, selected,
+			querySelected, caret);
 	}
 
 	/**
@@ -153,6 +180,7 @@ public class PickerModel
 		{
 			openSection = header;
 			query = "";
+			caret = 0;
 			refilter(true);
 		}
 	}
@@ -169,6 +197,7 @@ public class PickerModel
 		}
 		openSection = null;
 		query = "";
+		caret = 0;
 		refilter(true);
 		for (int i = 0; i < filtered.size(); i++)
 		{
@@ -205,6 +234,26 @@ public class PickerModel
 		refilter(false);
 	}
 
+	/**
+	 * Whether the popup opens with the selection on the setup that's already open, rather than at the top.
+	 */
+	public synchronized void setStartOnActiveSetup(boolean start)
+	{
+		startOnActiveSetup = start;
+	}
+
+	/**
+	 * Whether a search that finds nothing as typed may match names that are a typo or a few letters away.
+	 */
+	public synchronized void setFuzzySearch(boolean fuzzy)
+	{
+		if (fuzzySearch != fuzzy)
+		{
+			fuzzySearch = fuzzy;
+			refilter(false);
+		}
+	}
+
 	public synchronized void setActiveSetup(String name)
 	{
 		activeSetup = name == null ? "" : name;
@@ -216,11 +265,16 @@ public class PickerModel
 	public synchronized void setVisibleRows(int rows)
 	{
 		visibleRows = Math.max(1, rows);
+		if (revealSelection && selected >= scroll + visibleRows)
+		{
+			scroll = selected - visibleRows + 1;
+		}
 		clamp();
 	}
 
 	public synchronized void scrollBy(int rows)
 	{
+		revealSelection = false;
 		scroll += rows;
 		clamp();
 	}
@@ -253,12 +307,87 @@ public class PickerModel
 		paletteOpen = true;
 		searchFocused = true;
 		query = "";
+		caret = 0;
+		refilter(true);
+		selectActiveSetup();
+	}
+
+	/**
+	 * Start on the setup that's already open, when it's listed, so that it only takes Enter to close it.
+	 */
+	private void selectActiveSetup()
+	{
+		if (!startOnActiveSetup || activeSetup.isEmpty())
+		{
+			return;
+		}
+		for (int i = 0; i < filtered.size(); i++)
+		{
+			final PickerRow row = filtered.get(i);
+			if (!row.isHeader() && row.getSetup().getName().equals(activeSetup))
+			{
+				selected = i;
+				// The popup's size isn't known until it is next drawn, so it is scrolled into view then
+				revealSelection = true;
+				return;
+			}
+		}
+	}
+
+	/**
+	 * Highlight the whole search text, so that typing replaces it and Backspace clears it.
+	 */
+	public synchronized void selectQuery()
+	{
+		querySelected = searchFocused && !query.isEmpty();
+	}
+
+	/**
+	 * Move the cursor through the search text. After select all, it lands at the end moved towards.
+	 *
+	 * @param delta characters to move by; anything past either end stops there
+	 */
+	public synchronized void moveCaret(int delta)
+	{
+		if (querySelected)
+		{
+			querySelected = false;
+			caret = delta < 0 ? 0 : query.length();
+			return;
+		}
+		caret = (int) Math.max(0, Math.min((long) caret + delta, query.length()));
+	}
+
+	/**
+	 * Delete the character after the cursor, or everything after select all.
+	 */
+	public synchronized void deleteForward()
+	{
+		if (querySelected)
+		{
+			query = "";
+			caret = 0;
+		}
+		else if (caret < query.length())
+		{
+			query = query.substring(0, caret) + query.substring(caret + 1);
+		}
+		else
+		{
+			return;
+		}
 		refilter(true);
 	}
 
 	public synchronized void typeChar(char c)
 	{
-		query += c;
+		if (querySelected)
+		{
+			query = "";
+			caret = 0;
+		}
+		query = query.substring(0, caret) + c + query.substring(caret);
+		caret++;
 		refilter(true);
 	}
 
@@ -266,7 +395,21 @@ public class PickerModel
 	{
 		if (!query.isEmpty())
 		{
-			query = query.substring(0, query.length() - 1);
+			if (querySelected)
+			{
+				query = "";
+				caret = 0;
+			}
+			else if (caret > 0)
+			{
+				query = query.substring(0, caret - 1) + query.substring(caret);
+				caret--;
+			}
+			else
+			{
+				// at the start of the text: nothing before the cursor to delete
+				return;
+			}
 			refilter(true);
 		}
 		else
@@ -327,6 +470,7 @@ public class PickerModel
 		final boolean wasFiltered = !query.isEmpty();
 		searchFocused = false;
 		query = "";
+		caret = 0;
 		if (paletteOpen)
 		{
 			openSection = sectionBeforePalette;
@@ -346,6 +490,9 @@ public class PickerModel
 	 */
 	private void refilter(boolean resetPosition)
 	{
+		// a reload of the setups leaves the highlight alone; anything that changed the search has used it up
+		querySelected &= !resetPosition && !query.isEmpty();
+		revealSelection = false;
 		final List<PickerRow> page = isPaged() ? page() : null;
 		if (page != null)
 		{
@@ -358,26 +505,17 @@ public class PickerModel
 		else
 		{
 			final String needle = query.toLowerCase(Locale.ROOT);
-			final List<PickerRow> matches = new ArrayList<>();
-			// the heading of the section being gone through, until one of its setups matches and it gets listed
-			PickerRow pendingHeader = null;
-			boolean sectionMatches = false;
-			for (PickerRow row : rows)
+			List<PickerRow> matches = match(needle, SetupMatcher.Tier.EXACT);
+			if (fuzzySearch)
 			{
-				if (row.isHeader())
+				// Only when the search would otherwise find nothing: allow for a typo, then for letters left out
+				if (matches.isEmpty())
 				{
-					pendingHeader = row;
-					// a section's name finds all of its setups
-					sectionMatches = row != PickerRow.UNASSIGNED && row.getSectionName().toLowerCase(Locale.ROOT).contains(needle);
+					matches = match(needle, SetupMatcher.Tier.TYPO);
 				}
-				else if (sectionMatches || row.getSetup().getName().toLowerCase(Locale.ROOT).contains(needle))
+				if (matches.isEmpty())
 				{
-					if (pendingHeader != null)
-					{
-						matches.add(pendingHeader);
-						pendingHeader = null;
-					}
-					matches.add(row);
+					matches = match(needle, SetupMatcher.Tier.SUBSEQUENCE);
 				}
 			}
 			filtered = Collections.unmodifiableList(matches);
@@ -447,6 +585,34 @@ public class PickerModel
 			return page();
 		}
 		return Collections.unmodifiableList(page);
+	}
+
+	private List<PickerRow> match(String needle, SetupMatcher.Tier tier)
+	{
+		final List<PickerRow> matches = new ArrayList<>();
+		// the heading of the section being gone through, until one of its setups matches and it gets listed
+		PickerRow pendingHeader = null;
+		boolean sectionMatches = false;
+		for (PickerRow row : rows)
+		{
+			if (row.isHeader())
+			{
+				pendingHeader = row;
+				// a section's name finds all of its setups
+				sectionMatches = !row.isBuiltIn()
+					&& SetupMatcher.matches(row.getSectionName().toLowerCase(Locale.ROOT), needle, tier);
+			}
+			else if (sectionMatches || SetupMatcher.matches(row.getSetup().getName().toLowerCase(Locale.ROOT), needle, tier))
+			{
+				if (pendingHeader != null)
+				{
+					matches.add(pendingHeader);
+					pendingHeader = null;
+				}
+				matches.add(row);
+			}
+		}
+		return matches;
 	}
 
 	private void clamp()

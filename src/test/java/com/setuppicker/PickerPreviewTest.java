@@ -95,7 +95,7 @@ public class PickerPreviewTest
 		final List<SetupSection> sections = Arrays.asList(
 			new SetupSection("Bossing", new Color(120, 170, 255), Arrays.asList("Vorkath (dhcb)", "Zulrah", "Vardorvis")),
 			new SetupSection("Slayer", null, Arrays.asList("Slayer melee", "Slayer range", "Slayer burst", "Vorkath (dhcb)")));
-		docked.setRows(SetupRepository.group(setups(), sections, false, true), setups().size());
+		docked.setRows(SetupRepository.group(setups(), sections, false, true, Arrays.asList("Barrows", "Zulrah")), setups().size());
 		docked.setActiveSetup("Zulrah");
 		final PickerLayout dockedLayout = PickerLayout.compute(bank, WIDTH, true, 160, false, true,
 			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
