@@ -137,7 +137,7 @@ public class PickerInputTest
 		assertEquals(0, model.view().getSelected());
 		tap(KeyEvent.VK_BACK_SPACE, '\b');
 		assertEquals("s", model.view().getQuery());
-		assertEquals(2, model.view().getSetups().size());
+		assertEquals(2, model.view().getRows().size());
 	}
 
 	@Test

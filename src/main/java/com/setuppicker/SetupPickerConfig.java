@@ -1,6 +1,8 @@
 package com.setuppicker;
 
+import java.awt.Color;
 import java.awt.event.KeyEvent;
+import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -98,6 +100,31 @@ public interface SetupPickerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "groupBySection",
+		name = "Group by section",
+		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
+			+ " Typing a section's name lists its setups.",
+		position = 6
+	)
+	default boolean groupBySection()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "sectionPages",
+		name = "Sections as pages",
+		description = "With Group by section on, list just the sections, and open one to see its setups on a page of"
+			+ " their own. Click the section's name at the top, or press Left or Backspace, to go back. Typing in"
+			+ " the list of sections still searches every setup.",
+		position = 7
+	)
+	default boolean sectionPages()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showBesideBank",
 		name = "Show beside bank",
 		description = "Also show the setup list next to the bank while it is open",
@@ -132,6 +159,87 @@ public interface SetupPickerConfig extends Config
 	default int width()
 	{
 		return 160;
+	}
+
+	@ConfigItem(
+		keyName = "verticalWhenCollapsed",
+		name = "Vertical when collapsed",
+		description = "Show the collapsed list as a narrow upright tab against the bank. When off, it collapses to its title bar.",
+		section = bankSection,
+		position = 3
+	)
+	default boolean verticalWhenCollapsed()
+	{
+		return false;
+	}
+
+	@ConfigSection(
+		name = "Colors",
+		description = "Colors of the popup and the list beside the bank, for matching a resource pack",
+		position = 20,
+		closedByDefault = true
+	)
+	String colorSection = "colors";
+
+	@Alpha
+	@ConfigItem(
+		keyName = "backgroundColor",
+		name = "Background",
+		description = "Background of the list",
+		section = colorSection,
+		position = 0
+	)
+	default Color backgroundColor()
+	{
+		return PickerTheme.DEFAULT_BACKGROUND;
+	}
+
+	@ConfigItem(
+		keyName = "headerColor",
+		name = "Title bar",
+		description = "Background of the title bar",
+		section = colorSection,
+		position = 1
+	)
+	default Color headerColor()
+	{
+		return PickerTheme.DEFAULT_HEADER;
+	}
+
+	@ConfigItem(
+		keyName = "borderColor",
+		name = "Border",
+		description = "The frame, the search box outline and section dividers",
+		section = colorSection,
+		position = 2
+	)
+	default Color borderColor()
+	{
+		return PickerTheme.DEFAULT_BORDER;
+	}
+
+	@ConfigItem(
+		keyName = "accentColor",
+		name = "Accent",
+		description = "The title, the keyboard selection, the focused search box and the open setup",
+		section = colorSection,
+		position = 3
+	)
+	default Color accentColor()
+	{
+		return PickerTheme.DEFAULT_ACCENT;
+	}
+
+	@ConfigItem(
+		keyName = "textColor",
+		name = "Text",
+		description = "Setup names that have no color of their own in Inventory Setups",
+		section = colorSection,
+		position = 4
+	)
+	default Color textColor()
+	{
+		return PickerTheme.DEFAULT_TEXT;
 	}
 
 	@ConfigItem(

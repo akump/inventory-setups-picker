@@ -2,6 +2,7 @@ package com.setuppicker;
 
 import com.google.inject.Binder;
 import com.google.inject.Provides;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
@@ -131,8 +132,10 @@ public class SetupPickerPlugin extends Plugin
 	public void onConfigChanged(ConfigChanged event)
 	{
 		// Favoriting, recoloring or changing a setup's icon rewrites its saved json without a setups-changed message
+		// and neither does anything done to a section
 		final boolean setupEdited = SetupRepository.CONFIG_GROUP.equals(event.getGroup())
-			&& event.getKey().startsWith(SetupRepository.CONFIG_KEY_SETUP_PREFIX);
+			&& (event.getKey().startsWith(SetupRepository.CONFIG_KEY_SETUP_PREFIX)
+			|| SetupRepository.CONFIG_KEY_SECTIONS.equals(event.getKey()));
 		if (setupEdited || SetupPickerConfig.GROUP.equals(event.getGroup()))
 		{
 			queueRefresh();
@@ -224,7 +227,9 @@ public class SetupPickerPlugin extends Plugin
 			{
 				refreshQueued.set(false);
 				final List<SetupEntry> setups = repository.loadSetups(config.alphabetical(), config.favoritesFirst());
-				model.setSetups(setups);
+				final List<SetupSection> sections = config.groupBySection() ? repository.loadSections() : Collections.emptyList();
+				model.setSectionPages(config.sectionPages());
+				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst()), setups.size());
 				overlay.setStatus(isInventorySetupsEnabled() ? "No setups yet" : "Inventory Setups is off");
 			});
 		}

@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -16,16 +17,10 @@ import java.util.function.IntFunction;
  */
 public final class PickerPainter
 {
-	private static final Color BACKGROUND = new Color(40, 34, 26, 240);
 	private static final Color BORDER_OUTER = new Color(14, 13, 15);
-	private static final Color BORDER_INNER = new Color(87, 80, 64);
-	private static final Color HEADER_BACKGROUND = new Color(62, 53, 41);
 	private static final Color FIELD_BACKGROUND = new Color(0, 0, 0, 110);
-	private static final Color ACCENT = new Color(255, 152, 31);
-	private static final Color TEXT = new Color(235, 228, 210);
-	private static final Color TEXT_MUTED = new Color(150, 142, 125);
 	private static final Color ROW_HOVER = new Color(255, 255, 255, 28);
-	private static final Color ROW_ACTIVE = new Color(255, 152, 31, 70);
+	private static final Color SECTION_BACKGROUND = new Color(0, 0, 0, 60);
 	private static final Color FAVORITE = new Color(255, 215, 0);
 	private static final Color SCROLLBAR = new Color(120, 110, 90);
 
@@ -33,9 +28,13 @@ public final class PickerPainter
 	private static final int ICON_HEIGHT = 16;
 	private static final int STAR_SIZE = 7;
 	private static final int SCROLLBAR_WIDTH = 3;
+	private static final int SECTION_ARROW_WIDTH = 5;
 
-	private PickerPainter()
+	private final PickerTheme theme;
+
+	public PickerPainter(PickerTheme theme)
 	{
+		this.theme = theme;
 	}
 
 	/**
@@ -43,14 +42,14 @@ public final class PickerPainter
 	 * @param icons  item id to image, or null to draw no icons. May return null for an image that isn't ready.
 	 * @param status message for the empty list when there are no setups at all
 	 */
-	public static void paint(Graphics2D g, PickerLayout layout, PickerModel.View view, Point mouse,
+	public void paint(Graphics2D g, PickerLayout layout, PickerModel.View view, Point mouse,
 		IntFunction<BufferedImage> icons, Font font, String status)
 	{
 		g.setFont(font);
 		final FontMetrics fm = g.getFontMetrics();
 
 		final Rectangle bounds = layout.getBounds();
-		g.setColor(BACKGROUND);
+		g.setColor(theme.getBackground());
 		g.fill(bounds);
 
 		paintHeader(g, fm, layout, view, mouse);
@@ -62,23 +61,23 @@ public final class PickerPainter
 		}
 		if (layout.isPalette())
 		{
-			final SetupEntry selected = view.getSelected() < view.getSetups().size() ? view.getSetups().get(view.getSelected()) : null;
+			final SetupEntry selected = view.getSelected() < view.getRows().size() ? view.getRows().get(view.getSelected()).getSetup() : null;
 			final boolean closes = selected != null && selected.getName().equals(view.getActiveSetup());
-			g.setColor(TEXT_MUTED);
+			g.setColor(theme.getMutedText());
 			g.drawString(truncate(fm, "Up/Down: move   Enter: " + (closes ? "close" : "open") + "   Esc: cancel",
 				layout.getFooter().width - 8), layout.getFooter().x + 4, baseline(fm, layout.getFooter()));
 		}
 
-		g.setColor(BORDER_INNER);
+		g.setColor(theme.getBorder());
 		g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
 		g.setColor(BORDER_OUTER);
 		g.drawRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1);
 	}
 
-	private static void paintHeader(Graphics2D g, FontMetrics fm, PickerLayout layout, PickerModel.View view, Point mouse)
+	private void paintHeader(Graphics2D g, FontMetrics fm, PickerLayout layout, PickerModel.View view, Point mouse)
 	{
 		final Rectangle header = layout.getHeader();
-		g.setColor(HEADER_BACKGROUND);
+		g.setColor(theme.getHeader());
 		g.fill(header);
 		if (!layout.isPalette() && mouse != null && header.contains(mouse))
 		{
@@ -86,8 +85,13 @@ public final class PickerPainter
 			g.fill(header);
 		}
 
-		g.setColor(ACCENT);
+		g.setColor(theme.getAccent());
 		final String title = view.getTotal() > 0 ? "Setups (" + view.getTotal() + ")" : "Setups";
+		if (layout.isUprightTab())
+		{
+			paintCollapsedTab(g, fm, header, title);
+			return;
+		}
 		g.drawString(title, header.x + 7, baseline(fm, header));
 		if (layout.isPalette())
 		{
@@ -113,18 +117,41 @@ public final class PickerPainter
 		g.fill(arrow);
 	}
 
-	private static void paintSearch(Graphics2D g, FontMetrics fm, Rectangle search, PickerModel.View view)
+	/**
+	 * The collapsed list in its upright form: a vertical tab with the expand arrow at the top and the title reading upwards.
+	 */
+	private void paintCollapsedTab(Graphics2D g, FontMetrics fm, Rectangle tab, String title)
+	{
+		final int arrowSpace = 16;
+		final int cx = tab.x + tab.width / 2;
+		final int cy = tab.y + arrowSpace / 2 + 2;
+		final Polygon arrow = new Polygon();
+		arrow.addPoint(cx - 2, cy - 4);
+		arrow.addPoint(cx + 3, cy);
+		arrow.addPoint(cx - 2, cy + 4);
+		g.fill(arrow);
+
+		// Turned a quarter turn about the tab's bottom left corner, x runs up the tab and y across it
+		final AffineTransform upright = g.getTransform();
+		final int bottom = tab.y + tab.height;
+		g.rotate(-Math.PI / 2, tab.x, bottom);
+		final int across = (tab.width - fm.getAscent() - fm.getDescent()) / 2 + fm.getAscent();
+		g.drawString(truncate(fm, title, tab.height - arrowSpace - 12), tab.x + 7, bottom + across);
+		g.setTransform(upright);
+	}
+
+	private void paintSearch(Graphics2D g, FontMetrics fm, Rectangle search, PickerModel.View view)
 	{
 		g.setColor(FIELD_BACKGROUND);
 		g.fill(search);
-		g.setColor(view.isSearchFocused() ? ACCENT : BORDER_INNER);
+		g.setColor(view.isSearchFocused() ? theme.getAccent() : theme.getBorder());
 		g.drawRect(search.x, search.y, search.width - 1, search.height - 1);
 
 		final int textX = search.x + 5;
 		final int maxWidth = search.width - 10;
 		if (view.getQuery().isEmpty() && !view.isSearchFocused())
 		{
-			g.setColor(TEXT_MUTED);
+			g.setColor(theme.getMutedText());
 			g.drawString("Search...", textX, baseline(fm, search));
 			return;
 		}
@@ -135,7 +162,7 @@ public final class PickerPainter
 		{
 			query = query.substring(1);
 		}
-		g.setColor(TEXT);
+		g.setColor(theme.getText());
 		g.drawString(query, textX, baseline(fm, search));
 
 		if (view.isSearchFocused() && System.currentTimeMillis() / 500 % 2 == 0)
@@ -145,40 +172,45 @@ public final class PickerPainter
 		}
 	}
 
-	private static void paintList(Graphics2D g, FontMetrics fm, PickerLayout layout, PickerModel.View view, Point mouse,
+	private void paintList(Graphics2D g, FontMetrics fm, PickerLayout layout, PickerModel.View view, Point mouse,
 		IntFunction<BufferedImage> icons, String status)
 	{
 		final Rectangle list = layout.getList();
-		final List<SetupEntry> setups = view.getSetups();
+		final List<PickerRow> rows = view.getRows();
 
-		if (setups.isEmpty())
+		if (rows.isEmpty())
 		{
 			final String message = view.getTotal() > 0 ? "No matches" : status;
-			g.setColor(TEXT_MUTED);
+			g.setColor(theme.getMutedText());
 			g.drawString(truncate(fm, message, list.width - 8), list.x + 4, baseline(fm, list));
 			return;
 		}
 
-		final boolean scrollable = setups.size() > layout.getVisibleRows();
+		final boolean scrollable = rows.size() > layout.getVisibleRows();
 		final int rowWidth = list.width - (scrollable ? SCROLLBAR_WIDTH + 2 : 0);
 
 		for (int i = 0; i < layout.getVisibleRows(); i++)
 		{
 			final int index = view.getScroll() + i;
-			if (index >= setups.size())
+			if (index >= rows.size())
 			{
 				break;
 			}
-			final SetupEntry setup = setups.get(index);
 			final Rectangle row = layout.getRow(i);
 			row.width = rowWidth;
-
-			final boolean active = setup.getName().equals(view.getActiveSetup());
 			final boolean hovered = mouse != null && row.contains(mouse);
 			final boolean selected = view.isSearchFocused() && index == view.getSelected();
+			if (rows.get(index).isHeader())
+			{
+				paintSectionHeader(g, fm, row, rows.get(index), view.isSectionPages(), hovered, selected);
+				continue;
+			}
+			final SetupEntry setup = rows.get(index).getSetup();
+
+			final boolean active = setup.getName().equals(view.getActiveSetup());
 			if (active)
 			{
-				g.setColor(ROW_ACTIVE);
+				g.setColor(theme.getActiveRow());
 				g.fill(row);
 			}
 			if (hovered || selected)
@@ -188,7 +220,7 @@ public final class PickerPainter
 			}
 			if (selected)
 			{
-				g.setColor(ACCENT);
+				g.setColor(theme.getAccent());
 				g.drawRect(row.x, row.y, row.width - 1, row.height - 1);
 			}
 
@@ -210,21 +242,83 @@ public final class PickerPainter
 				paintStar(g, textRight + 3 + STAR_SIZE / 2, row.y + row.height / 2);
 			}
 
-			g.setColor(setup.getDisplayColor() != null ? setup.getDisplayColor() : (active ? ACCENT : TEXT));
+			g.setColor(setup.getDisplayColor() != null ? setup.getDisplayColor() : (active ? theme.getAccent() : theme.getText()));
 			g.drawString(truncate(fm, setup.getName(), textRight - textX), textX, baseline(fm, row));
 		}
 
 		if (scrollable)
 		{
-			final int barHeight = Math.max(8, list.height * layout.getVisibleRows() / setups.size());
-			final int maxScroll = setups.size() - layout.getVisibleRows();
+			final int barHeight = Math.max(8, list.height * layout.getVisibleRows() / rows.size());
+			final int maxScroll = rows.size() - layout.getVisibleRows();
 			final int barY = list.y + (list.height - barHeight) * view.getScroll() / maxScroll;
 			g.setColor(SCROLLBAR);
 			g.fillRect(list.x + list.width - SCROLLBAR_WIDTH, barY, SCROLLBAR_WIDTH, barHeight);
 		}
 	}
 
-	private static void paintStar(Graphics2D g, int cx, int cy)
+	/**
+	 * @param pickable the heading leads to the section's page, or back from it, so gets an arrow saying which
+	 */
+	private void paintSectionHeader(Graphics2D g, FontMetrics fm, Rectangle row, PickerRow header,
+		boolean pickable, boolean hovered, boolean selected)
+	{
+		g.setColor(SECTION_BACKGROUND);
+		g.fill(row);
+		if (pickable && (hovered || selected))
+		{
+			g.setColor(ROW_HOVER);
+			g.fill(row);
+		}
+		if (pickable && selected)
+		{
+			g.setColor(theme.getAccent());
+			g.drawRect(row.x, row.y, row.width - 1, row.height - 1);
+		}
+
+		// muted reads as disabled, which a heading that can be picked isn't
+		final Color color = header.getSectionColor() != null ? header.getSectionColor() : (pickable ? theme.getText() : theme.getMutedText());
+		final int cy = row.y + row.height / 2;
+		int textX = row.x + 4;
+		int right = row.x + row.width - 4;
+		g.setColor(color);
+		if (header.isBack())
+		{
+			paintArrow(g, textX, cy, -1);
+			textX += SECTION_ARROW_WIDTH + 4;
+		}
+		else if (pickable)
+		{
+			right -= SECTION_ARROW_WIDTH;
+			paintArrow(g, right, cy, 1);
+			right -= 4;
+		}
+
+		final String name = truncate(fm, header.getSectionName(), right - textX);
+		g.drawString(name, textX, baseline(fm, row));
+
+		// rule filling the rest of the row
+		final int ruleX = textX + fm.stringWidth(name) + 5;
+		if (ruleX < right)
+		{
+			g.setColor(theme.getBorder());
+			g.drawLine(ruleX, cy, right - 1, cy);
+		}
+	}
+
+	/**
+	 * A small arrowhead with its flat side at x, pointing right for a direction of 1 and left for -1.
+	 */
+	private void paintArrow(Graphics2D g, int x, int cy, int direction)
+	{
+		final int base = direction > 0 ? x : x + SECTION_ARROW_WIDTH;
+		final Polygon arrow = new Polygon();
+		arrow.addPoint(base, cy - 4);
+		arrow.addPoint(base + direction * SECTION_ARROW_WIDTH, cy);
+		arrow.addPoint(base, cy + 4);
+		g.fill(arrow);
+	}
+
+	private void paintStar(Graphics2D g, int cx, int cy)
 	{
 		final Polygon star = new Polygon();
 		for (int i = 0; i < 10; i++)

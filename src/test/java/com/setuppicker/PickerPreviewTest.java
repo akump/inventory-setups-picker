@@ -7,11 +7,13 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
 import javax.imageio.ImageIO;
 import net.runelite.client.ui.FontManager;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -70,12 +72,19 @@ public class PickerPreviewTest
 			palette.typeChar(c);
 		}
 		final PickerLayout paletteLayout = PickerLayout.computePalette(new Rectangle(WIDTH, HEIGHT), 240,
-			palette.view().getSetups().size(), PickerLayout.ROW_HEIGHT_ICONS, 10);
+			palette.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS, 10);
 		palette.setVisibleRows(paletteLayout.getVisibleRows());
 		palette.moveSelection(1);
-		PickerPainter.paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
 		assertTrue(paletteLayout.isPalette());
 		assertEquals(3, paletteLayout.getVisibleRows());
+
+		// Below it: the same popup recolored, as someone matching a resource pack might
+		final PickerTheme recolored = new PickerTheme(new Color(20, 28, 44, 240), new Color(34, 48, 74),
+			new Color(70, 92, 130), new Color(110, 190, 255), new Color(225, 232, 245));
+		g.translate(0, 180);
+		new PickerPainter(recolored).paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		g.translate(0, -180);
 
 		// Right: docked beside a stand-in bank, scrolled, with the mouse over a row
 		g.translate(WIDTH, 0);
@@ -83,16 +92,30 @@ public class PickerPreviewTest
 		g.setColor(new Color(73, 64, 52));
 		g.fill(bank);
 		final PickerModel docked = new PickerModel();
-		docked.setSetups(setups());
+		final List<SetupSection> sections = Arrays.asList(
+			new SetupSection("Bossing", new Color(120, 170, 255), Arrays.asList("Vorkath (dhcb)", "Zulrah", "Vardorvis")),
+			new SetupSection("Slayer", null, Arrays.asList("Slayer melee", "Slayer range", "Slayer burst", "Vorkath (dhcb)")));
+		docked.setRows(SetupRepository.group(setups(), sections, false, true), setups().size());
 		docked.setActiveSetup("Zulrah");
-		final PickerLayout dockedLayout = PickerLayout.compute(bank, WIDTH, true, 160, false,
-			docked.view().getSetups().size(), PickerLayout.ROW_HEIGHT_ICONS);
+		final PickerLayout dockedLayout = PickerLayout.compute(bank, WIDTH, true, 160, false, true,
+			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
 		docked.setVisibleRows(dockedLayout.getVisibleRows());
 		docked.scrollBy(1);
 		final Rectangle hovered = dockedLayout.getRow(3);
-		PickerPainter.paint(g, dockedLayout, docked.view(), new Point(hovered.x + 20, hovered.y + 5), ICONS,
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, dockedLayout, docked.view(), new Point(hovered.x + 20, hovered.y + 5), ICONS,
 			FontManager.getRunescapeSmallFont(), "");
+
+		// Collapsed, on the bank's other side here so both can be seen: a narrow upright tab
+		final PickerLayout collapsed = PickerLayout.compute(bank, WIDTH, false, 160, true, true,
+			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, collapsed, docked.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
 		g.dispose();
+
+		assertTrue(collapsed.isCollapsed());
+		assertEquals(bank.x + bank.width + PickerLayout.GAP, collapsed.getBounds().x);
+		assertEquals(bank.y, collapsed.getBounds().y);
+		assertTrue(collapsed.getBounds().height > collapsed.getBounds().width);
+		assertEquals(collapsed.getBounds(), collapsed.getHeader());
 
 		// left of the bank, same top, and no taller than it
 		assertEquals(bank.x - PickerLayout.GAP, dockedLayout.getBounds().x + dockedLayout.getBounds().width);
@@ -110,12 +133,21 @@ public class PickerPreviewTest
 	{
 		// fixed mode: the bank spans the game area, with the inventory to its right
 		final Rectangle bank = new Rectangle(12, 2, 488, 334);
-		final PickerLayout left = PickerLayout.compute(bank, WIDTH, true, 160, false, 5, 20);
+		final PickerLayout left = PickerLayout.compute(bank, WIDTH, true, 160, false, true, 5, 20);
 		assertEquals(bank.x + bank.width + PickerLayout.GAP, left.getBounds().x);
 
-		final PickerLayout none = PickerLayout.compute(bank, 512, true, 160, true, 5, 20);
+		final PickerLayout none = PickerLayout.compute(bank, 512, true, 160, true, false, 5, 20);
 		assertEquals(bank.x, none.getBounds().x);
 		assertTrue(none.isCollapsed());
 		assertEquals(-1, none.rowAt(new Point(bank.x + 5, bank.y + 5)));
+		// with the upright tab turned off, collapsing leaves the full-width title bar
+		assertFalse(none.isUprightTab());
+		assertEquals(160, none.getBounds().width);
+		assertEquals(PickerLayout.HEADER_HEIGHT, none.getBounds().height);
+
+		// the upright tab is narrow enough to fit beside the bank where the list doesn't
+		final PickerLayout tab = PickerLayout.compute(bank, 530, true, 160, true, true, 5, 20);
+		assertTrue(tab.isUprightTab());
+		assertEquals(bank.x + bank.width + PickerLayout.GAP, tab.getBounds().x);
 	}
 }

@@ -9,8 +9,10 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.EquipmentInventorySlot;
@@ -44,6 +46,8 @@ public class SetupRepository
 	// Inventory Setups stores each setup as json under setupsV3_<murmur3_128 of the name>
 	static final String CONFIG_GROUP = "inventorysetups";
 	static final String CONFIG_KEY_SETUP_PREFIX = "setupsV3_";
+	// and all the sections together, as a json array
+	static final String CONFIG_KEY_SECTIONS = "sections";
 
 	private final EventBus eventBus;
 	private final ConfigManager configManager;
@@ -132,6 +136,112 @@ public class SetupRepository
 			iconItemId = ItemID._100GUIDE_GUIDECAKE;
 		}
 		return new SetupEntry(name, favorite, displayColor, iconItemId);
+	}
+
+	/**
+	 * The sections setups are grouped into, in the order of Inventory Setups' side panel. There is no API for
+	 * these, so they are read from where Inventory Setups saves them.
+	 */
+	public List<SetupSection> loadSections()
+	{
+		return parseSections(gson, configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_SECTIONS));
+	}
+
+	/**
+	 * Reads the saved sections, skipping any that can't be made sense of.
+	 */
+	static List<SetupSection> parseSections(Gson gson, String json)
+	{
+		final List<SetupSection> sections = new ArrayList<>();
+		try
+		{
+			final JsonArray saved = json == null ? null : gson.fromJson(json, JsonArray.class);
+			if (saved == null)
+			{
+				return sections;
+			}
+			for (JsonElement element : saved)
+			{
+				if (!element.isJsonObject() || !element.getAsJsonObject().has("name"))
+				{
+					continue;
+				}
+				final JsonObject section = element.getAsJsonObject();
+				final List<String> setupNames = new ArrayList<>();
+				if (section.has("setups") && section.get("setups").isJsonArray())
+				{
+					for (JsonElement setup : section.getAsJsonArray("setups"))
+					{
+						setupNames.add(setup.getAsString());
+					}
+				}
+				final Color displayColor = section.has("displayColor") ? gson.fromJson(section.get("displayColor"), Color.class) : null;
+				sections.add(new SetupSection(section.get("name").getAsString(), displayColor, Collections.unmodifiableList(setupNames)));
+			}
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Couldn't read the saved sections", e);
+		}
+		return sections;
+	}
+
+	/**
+	 * Lays the setups out under a heading per section, followed by the ones in no section. A setup is listed
+	 * under every section it is in. Without any sections in use, it's just the setups.
+	 *
+	 * @param setups       every setup, in the order to list them
+	 * @param alphabetical sort each section by name, rather than keeping the order it has in Inventory Setups
+	 */
+	static List<PickerRow> group(List<SetupEntry> setups, List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst)
+	{
+		final Map<String, SetupEntry> byName = new HashMap<>();
+		for (SetupEntry setup : setups)
+		{
+			byName.put(setup.getName(), setup);
+		}
+
+		final List<PickerRow> rows = new ArrayList<>();
+		final Set<String> assigned = new HashSet<>();
+		for (SetupSection section : sections)
+		{
+			final List<SetupEntry> members = new ArrayList<>();
+			for (String name : section.getSetupNames())
+			{
+				final SetupEntry setup = byName.get(name);
+				if (setup != null)
+				{
+					members.add(setup);
+				}
+			}
+			if (members.isEmpty())
+			{
+				continue;
+			}
+			rows.add(PickerRow.header(section));
+			for (SetupEntry setup : sort(members, alphabetical, favoritesFirst))
+			{
+				rows.add(PickerRow.of(setup));
+				assigned.add(setup.getName());
+			}
+		}
+
+		final boolean sectioned = !rows.isEmpty();
+		boolean unassignedHeading = false;
+		for (SetupEntry setup : setups)
+		{
+			if (assigned.contains(setup.getName()))
+			{
+				continue;
+			}
+			if (sectioned && !unassignedHeading)
+			{
+				rows.add(PickerRow.UNASSIGNED);
+				unassignedHeading = true;
+			}
+			rows.add(PickerRow.of(setup));
+		}
+		return rows;
 	}
 
 	private static int itemIdAt(JsonArray items, int index)

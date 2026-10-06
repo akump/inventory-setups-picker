@@ -72,7 +72,7 @@ public class SetupPickerOverlay extends Overlay
 		if (view.isPaletteOpen())
 		{
 			newLayout = PickerLayout.computePalette(new Rectangle(client.getCanvasWidth(), client.getCanvasHeight()),
-				PALETTE_WIDTH, view.getSetups().size(), rowHeight, config.popupRows());
+				PALETTE_WIDTH, view.getRows().size(), rowHeight, config.popupRows());
 		}
 		else
 		{
@@ -83,15 +83,17 @@ public class SetupPickerOverlay extends Overlay
 				return null;
 			}
 			newLayout = PickerLayout.compute(bank.getBounds(), client.getCanvasWidth(),
-				config.side() == SetupPickerConfig.Side.LEFT, config.width(), config.collapsed(),
-				view.getSetups().size(), rowHeight);
+				config.side() == SetupPickerConfig.Side.LEFT, config.width(), config.collapsed(), config.verticalWhenCollapsed(),
+				view.getRows().size(), rowHeight);
 		}
 		// clamps the scroll position to what now fits, so take the view afterwards
 		model.setVisibleRows(newLayout.getVisibleRows());
 		layout = newLayout;
 
 		final net.runelite.api.Point mouse = client.getMouseCanvasPosition();
-		PickerPainter.paint(graphics, newLayout, model.view(),
+		final PickerTheme theme = new PickerTheme(config.backgroundColor(), config.headerColor(), config.borderColor(),
+			config.accentColor(), config.textColor());
+		new PickerPainter(theme).paint(graphics, newLayout, model.view(),
 			mouse == null ? null : new Point(mouse.getX(), mouse.getY()),
 			config.showIcons() ? itemManager::getImage : null,
 			FontManager.getRunescapeSmallFont(), status);
