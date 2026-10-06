@@ -18,9 +18,16 @@ shortcut matches its bank search.
 | `Up` / `Down`, `Tab` / `Shift+Tab` | Move the selection |
 | `Page Up` / `Page Down` | Move a page at a time |
 | `Enter` | Open the selected setup (or close it, if it's the one already open) |
+| `Left` / `Right`, `Home` / `End` | Move the cursor through the search text |
+| `Backspace` / `Delete` | Delete the character before / after the cursor |
+| `Ctrl+A` / `Cmd+A` | Highlight the search text, so typing replaces it and `Backspace` clears it |
 | `Esc`, the hotkey again, or clicking elsewhere | Cancel |
 
-While the popup is open, typing goes to it rather than to the chatbox.
+While the popup is open, typing goes to it rather than to the chatbox, including keys that Key Remapping or
+Platform Keys would otherwise turn into something else.
+
+If a setup is already open, the popup starts with it selected, so the hotkey followed by `Enter` closes it. Turn
+off **Start on open setup** to always start at the top of the list.
 
 <img src="docs/popup.png" alt="The hotkey popup filtered to setups matching &quot;sla&quot;" width="700">
 
@@ -29,6 +36,9 @@ While the popup is open, typing goes to it rather than to the chatbox.
 While the bank is open the same list is shown next to it. Click a setup to open it, click the open setup to close
 it, click the search box to filter, scroll with the mouse wheel, and click the title bar to collapse the list. This
 can be turned off in the plugin's settings.
+
+Collapsed, the list shrinks to its title bar. With **Vertical when collapsed** turned on it becomes a narrow
+upright tab against the bank's edge instead.
 
 <img src="docs/bank-list.png" alt="The list of setups beside the bank, with the open setup highlighted" width="700">
 
@@ -41,13 +51,57 @@ in the plugin's settings to get one flat list.
 
 With **Sections as pages** turned on in the settings, the lists show just the sections instead. Click a section, or
 select it and press `Enter`, to see its setups on a page of their own, and click its name at the top, or press
-`Left` or `Backspace`, to go back. Typing on a section's page searches that section; typing in the list of sections
+`Left` or `Backspace` in an empty search box, to go back. Typing on a section's page searches that section; typing in the list of sections
 still searches every setup.
+
+## Options at a glance
+
+<img src="docs/options.png" alt="Three options: recently used setups listed first with a clock, a popup in custom colors, and the list collapsed to a vertical tab beside the bank" width="700">
+
+## Ordering and search
+
+Setups are shown with the icon and color you gave them in Inventory Setups, and a star if they are a favorite.
+
+- **Sort alphabetically** (on by default): list setups by name. Turn it off to keep the order of the Inventory
+  Setups side panel.
+- **Favorites first** (on by default): list favorited setups before the rest.
+- **Recently used** (off by default): set how many of the setups you opened most recently, up to 10, to list at
+  the top, latest first and marked with a clock. With "Group by section" on they get a "Recent" heading and stay
+  in their own sections too. Setups opened from the Inventory Setups side panel count as well.
+- **Fuzzy search** (on by default): when a search finds nothing as typed, it also matches names that are a typo
+  away (`vorkahh`) or that have the typed letters in order (`vkdh`). Searches that do match are unaffected.
+
+## Colors
+
+The **Colors** section of the settings changes the background, title bar, border, accent and text colors of both
+lists, each with a color picker that takes a hex code, for matching a resource pack. To put one back, right-click
+its name in the settings and choose "Reset".
+
+## Settings
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Open hotkey | K | The key that opens the popup. Only the key is used; the modifier comes from the next setting. |
+| Require Ctrl/Cmd | On | Require Cmd (Mac) or Ctrl (Windows/Linux) with the hotkey. Follows Platform Keys' key profile when that plugin is on. |
+| Start on open setup | On | Open the popup with the already open setup selected. |
+| Popup rows | 10 | How many rows the popup shows before it scrolls. |
+| Show icons | On | Show each setup's icon next to its name. |
+| Sort alphabetically | On | List setups by name instead of in the side panel's order. |
+| Favorites first | On | List favorited setups before the rest. |
+| Recently used | 0 | How many recently opened setups to list at the top. 0 turns it off. |
+| Fuzzy search | On | Allow for typos and skipped letters when a search finds nothing as typed. |
+| Group by section | On | List setups under their Inventory Setups sections. |
+| Sections as pages | Off | List just the sections, and open one to see its setups. |
+| Show beside bank | On | Show the list next to the bank while it is open. |
+| Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. |
+| Width | 160 | Width of the list beside the bank, in pixels. |
+| Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. |
+| Colors | | Background, title bar, border, accent and text colors. |
 
 ## Requirements
 
-Inventory Setups must be installed and enabled. Setups are listed alphabetically,
-or in Inventory Setups' own order if you turn that off (optionally favorites first), with the icon and color you gave them there.
+Inventory Setups must be installed and enabled. The picker lists and opens the setups you keep there; it does not
+store any setups of its own.
 
 ## Development
 

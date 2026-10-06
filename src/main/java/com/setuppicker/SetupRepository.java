@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,6 +46,8 @@ public class SetupRepository
 
 	// Inventory Setups stores each setup as json under setupsV3_<murmur3_128 of the name>
 	static final String CONFIG_GROUP = "inventorysetups";
+	private static final int MAX_RECENT = 10;
+
 	static final String CONFIG_KEY_SETUP_PREFIX = "setupsV3_";
 	// and all the sections together, as a json array
 	static final String CONFIG_KEY_SECTIONS = "sections";
@@ -95,6 +98,51 @@ public class SetupRepository
 			setups.sort((a, b) -> Boolean.compare(b.isFavorite(), a.isFavorite()));
 		}
 		return setups;
+	}
+
+	/**
+	 * Puts a setup at the front of the recently used names, which are kept latest first and capped in number.
+	 *
+	 * @return the new list, or the same one if the setup was already at the front
+	 */
+	static List<String> markUsed(List<String> recent, String name)
+	{
+		if (!recent.isEmpty() && recent.get(0).equals(name))
+		{
+			return recent;
+		}
+		final List<String> updated = new ArrayList<>(recent.size() + 1);
+		updated.add(name);
+		for (String other : recent)
+		{
+			if (!other.equals(name) && updated.size() < MAX_RECENT)
+			{
+				updated.add(other);
+			}
+		}
+		return updated;
+	}
+
+	/**
+	 * The recently used setup names saved by {@link #saveRecent}, latest first.
+	 */
+	public List<String> loadRecent()
+	{
+		try
+		{
+			final String[] names = gson.fromJson(configManager.getConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_RECENT), String[].class);
+			return names == null ? Collections.emptyList() : Arrays.asList(names);
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Couldn't read the recently used setups", e);
+			return Collections.emptyList();
+		}
+	}
+
+	public void saveRecent(List<String> recent)
+	{
+		configManager.setConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_RECENT, gson.toJson(recent));
 	}
 
 	/**
@@ -195,6 +243,17 @@ public class SetupRepository
 	 */
 	static List<PickerRow> group(List<SetupEntry> setups, List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst)
 	{
+		return group(setups, sections, alphabetical, favoritesFirst, Collections.emptyList());
+	}
+
+	/**
+	 * @param recent names of the recently used setups to list at the top, latest first. Empty for none. When
+	 *               the list is in sections they get a heading of their own and are listed in their sections
+	 *               as well; otherwise they are simply moved to the top.
+	 */
+	static List<PickerRow> group(List<SetupEntry> setups, List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst,
+		List<String> recent)
+	{
 		final Map<String, SetupEntry> byName = new HashMap<>();
 		for (SetupEntry setup : setups)
 		{
@@ -227,6 +286,30 @@ public class SetupRepository
 		}
 
 		final boolean sectioned = !rows.isEmpty();
+
+		final List<PickerRow> recentRows = new ArrayList<>();
+		for (String name : recent)
+		{
+			// one that has since been deleted or renamed is just left out
+			final SetupEntry setup = byName.get(name);
+			if (setup != null)
+			{
+				recentRows.add(PickerRow.recent(setup));
+				if (!sectioned)
+				{
+					assigned.add(name);
+				}
+			}
+		}
+		if (!recentRows.isEmpty())
+		{
+			if (sectioned)
+			{
+				recentRows.add(0, PickerRow.RECENT);
+			}
+			rows.addAll(0, recentRows);
+		}
+
 		boolean unassignedHeading = false;
 		for (SetupEntry setup : setups)
 		{
