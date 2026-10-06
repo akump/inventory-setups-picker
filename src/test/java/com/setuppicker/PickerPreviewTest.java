@@ -75,9 +75,16 @@ public class PickerPreviewTest
 			palette.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS, 10);
 		palette.setVisibleRows(paletteLayout.getVisibleRows());
 		palette.moveSelection(1);
-		PickerPainter.paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
 		assertTrue(paletteLayout.isPalette());
 		assertEquals(3, paletteLayout.getVisibleRows());
+
+		// Below it: the same popup recolored, as someone matching a resource pack might
+		final PickerTheme recolored = new PickerTheme(new Color(20, 28, 44, 240), new Color(34, 48, 74),
+			new Color(70, 92, 130), new Color(110, 190, 255), new Color(225, 232, 245));
+		g.translate(0, 180);
+		new PickerPainter(recolored).paint(g, paletteLayout, palette.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		g.translate(0, -180);
 
 		// Right: docked beside a stand-in bank, scrolled, with the mouse over a row
 		g.translate(WIDTH, 0);
@@ -95,13 +102,13 @@ public class PickerPreviewTest
 		docked.setVisibleRows(dockedLayout.getVisibleRows());
 		docked.scrollBy(1);
 		final Rectangle hovered = dockedLayout.getRow(3);
-		PickerPainter.paint(g, dockedLayout, docked.view(), new Point(hovered.x + 20, hovered.y + 5), ICONS,
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, dockedLayout, docked.view(), new Point(hovered.x + 20, hovered.y + 5), ICONS,
 			FontManager.getRunescapeSmallFont(), "");
 
 		// Collapsed, on the bank's other side here so both can be seen: a narrow upright tab
 		final PickerLayout collapsed = PickerLayout.compute(bank, WIDTH, false, 160, true, true,
 			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
-		PickerPainter.paint(g, collapsed, docked.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, collapsed, docked.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
 		g.dispose();
 
 		assertTrue(collapsed.isCollapsed());

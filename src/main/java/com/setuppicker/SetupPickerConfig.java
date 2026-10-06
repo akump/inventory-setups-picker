@@ -1,6 +1,8 @@
 package com.setuppicker;
 
+import java.awt.Color;
 import java.awt.event.KeyEvent;
+import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -169,6 +171,75 @@ public interface SetupPickerConfig extends Config
 	default boolean verticalWhenCollapsed()
 	{
 		return false;
+	}
+
+	@ConfigSection(
+		name = "Colors",
+		description = "Colors of the popup and the list beside the bank, for matching a resource pack",
+		position = 20,
+		closedByDefault = true
+	)
+	String colorSection = "colors";
+
+	@Alpha
+	@ConfigItem(
+		keyName = "backgroundColor",
+		name = "Background",
+		description = "Background of the list",
+		section = colorSection,
+		position = 0
+	)
+	default Color backgroundColor()
+	{
+		return PickerTheme.DEFAULT_BACKGROUND;
+	}
+
+	@ConfigItem(
+		keyName = "headerColor",
+		name = "Title bar",
+		description = "Background of the title bar",
+		section = colorSection,
+		position = 1
+	)
+	default Color headerColor()
+	{
+		return PickerTheme.DEFAULT_HEADER;
+	}
+
+	@ConfigItem(
+		keyName = "borderColor",
+		name = "Border",
+		description = "The frame, the search box outline and section dividers",
+		section = colorSection,
+		position = 2
+	)
+	default Color borderColor()
+	{
+		return PickerTheme.DEFAULT_BORDER;
+	}
+
+	@ConfigItem(
+		keyName = "accentColor",
+		name = "Accent",
+		description = "The title, the keyboard selection, the focused search box and the open setup",
+		section = colorSection,
+		position = 3
+	)
+	default Color accentColor()
+	{
+		return PickerTheme.DEFAULT_ACCENT;
+	}
+
+	@ConfigItem(
+		keyName = "textColor",
+		name = "Text",
+		description = "Setup names that have no color of their own in Inventory Setups",
+		section = colorSection,
+		position = 4
+	)
+	default Color textColor()
+	{
+		return PickerTheme.DEFAULT_TEXT;
 	}
 
 	@ConfigItem(
