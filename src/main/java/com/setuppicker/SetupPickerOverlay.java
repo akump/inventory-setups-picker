@@ -32,6 +32,7 @@ public class SetupPickerOverlay extends Overlay
 	// Layout of the last rendered frame, read by the input listeners. Null while the picker isn't showing.
 	private volatile PickerLayout layout;
 	private volatile String status = "";
+	private volatile Point mouse;
 
 	@Inject
 	SetupPickerOverlay(Client client, SetupPickerConfig config, PickerModel model, ItemManager itemManager)
@@ -61,6 +62,16 @@ public class SetupPickerOverlay extends Overlay
 	public void clearLayout()
 	{
 		layout = null;
+		mouse = null;
+	}
+
+	/**
+	 * @param mouse where the mouse is over the picker, which is kept from the game (see PickerInput), or null
+	 *              when it's elsewhere
+	 */
+	public void setMouse(Point mouse)
+	{
+		this.mouse = mouse;
 	}
 
 	@Override
@@ -90,12 +101,16 @@ public class SetupPickerOverlay extends Overlay
 		model.setVisibleRows(newLayout.getVisibleRows());
 		layout = newLayout;
 
-		final net.runelite.api.Point mouse = client.getMouseCanvasPosition();
+		// over the picker the game doesn't know where the mouse is; anywhere else it does
+		final Point hidden = mouse;
+		final net.runelite.api.Point seen = client.getMouseCanvasPosition();
+		// unless the picker has since moved out from under it
+		final Point hover = hidden != null && newLayout.getBounds().contains(hidden) ? hidden : (seen == null ? null : new Point(seen.getX(), seen.getY()));
 		final PickerTheme theme = new PickerTheme(config.backgroundColor(), config.headerColor(), config.borderColor(),
 			config.accentColor(), config.textColor());
 		final String title = config.source() == SetupPickerConfig.Source.BANK_TAGS ? "Bank tags" : "Setups";
 		new PickerPainter(theme, title).paint(graphics, newLayout, model.view(),
-			mouse == null ? null : new Point(mouse.getX(), mouse.getY()),
+			hover,
 			config.showIcons() ? itemManager::getImage : null,
 			FontManager.getRunescapeSmallFont(), status);
 		return null;

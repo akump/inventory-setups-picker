@@ -91,6 +91,26 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 		return e;
 	}
 
+	/**
+	 * While the mouse is over the picker, the game is told it has left the canvas instead. Otherwise whatever
+	 * is underneath (bank items, when the popup is over the bank) is still hovered, and its tooltip gets drawn
+	 * on top of the picker.
+	 */
+	@Override
+	public MouseEvent mouseMoved(MouseEvent e)
+	{
+		final PickerLayout layout = overlay.getLayout();
+		if (layout == null || !layout.getBounds().contains(e.getPoint()))
+		{
+			overlay.setMouse(null);
+			return e;
+		}
+		// the game no longer knows where the mouse is, so the overlay is told for its own hover highlight
+		overlay.setMouse(e.getPoint());
+		return new MouseEvent(e.getComponent(), e.getID(), e.getWhen(), e.getModifiersEx(), -1, -1,
+			e.getClickCount(), e.isPopupTrigger(), e.getButton());
+	}
+
 	private void clickRow(PickerLayout layout, MouseEvent e)
 	{
 		final int row = layout.rowAt(e.getPoint());
