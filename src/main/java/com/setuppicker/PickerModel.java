@@ -31,11 +31,13 @@ public class PickerModel
 		private final String activeBankTag;
 		private final boolean mixed;
 		private final boolean scrollbarDragged;
+		private final boolean notesShown;
 
 		private View(List<PickerRow> rows, int total, String activeSetup, String activeBankTag, boolean mixed, String query,
 			boolean searchFocused, boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected,
-			int caret, boolean scrollbarDragged)
+			int caret, boolean scrollbarDragged, boolean notesShown)
 		{
+			this.notesShown = notesShown;
 			this.scrollbarDragged = scrollbarDragged;
 			this.activeBankTag = activeBankTag;
 			this.mixed = mixed;
@@ -88,6 +90,14 @@ public class PickerModel
 		public boolean isMixed()
 		{
 			return mixed;
+		}
+
+		/**
+		 * Whether setups' notes are shown: a mark on those that have any, and the notes of the one pointed at.
+		 */
+		public boolean isNotesShown()
+		{
+			return notesShown;
 		}
 
 		/**
@@ -167,6 +177,7 @@ public class PickerModel
 	private boolean bankTagOpenedLast;
 	private boolean mixed;
 	private boolean scrollbarDragged;
+	private boolean showNotes;
 	private String query = "";
 	private boolean searchFocused;
 	private boolean paletteOpen;
@@ -188,7 +199,7 @@ public class PickerModel
 	public synchronized View view()
 	{
 		return new View(filtered, total, activeSetup, activeBankTag, mixed, query, searchFocused, paletteOpen, isPaged(),
-			scroll, selected, querySelected, caret, scrollbarDragged);
+			scroll, selected, querySelected, caret, scrollbarDragged, showNotes);
 	}
 
 	/**
@@ -280,6 +291,14 @@ public class PickerModel
 		mixed = setups && bankTags;
 		// a reload (e.g. after a setup is edited) shouldn't move the list under the user
 		refilter(false);
+	}
+
+	/**
+	 * Whether to show the notes setups have in Inventory Setups.
+	 */
+	public synchronized void setShowNotes(boolean show)
+	{
+		showNotes = show;
 	}
 
 	/**

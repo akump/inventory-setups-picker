@@ -32,6 +32,36 @@ public class SetupRepositoryTest
 	}
 
 	@Test
+	public void readsNotes()
+	{
+		final SetupEntry setup = SetupRepository.parseSetup(gson, "Zulrah",
+			"{\"inv\":[],\"eq\":[],\"name\":\"Zulrah\",\"notes\":\"  Bring a ring of recoil\\nand antivenom \"}");
+		assertEquals("Bring a ring of recoil\nand antivenom", setup.getNotes());
+		// most setups have none
+		assertEquals("", SetupRepository.parseSetup(gson, "Whip", "{\"inv\":[],\"eq\":[]}").getNotes());
+		assertEquals("", SetupRepository.parseSetup(gson, "Whip", "{\"inv\":[],\"eq\":[],\"notes\":null}").getNotes());
+		assertEquals("", SetupEntry.bankTag("Clues", 1).getNotes());
+	}
+
+	@Test
+	public void readsSpellbook()
+	{
+		assertEquals(2, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[],\"sb\":2}").getSpellbook());
+		// the standard spellbook isn't saved
+		assertEquals(0, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[]}").getSpellbook());
+		// "none", and anything not known of
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[],\"sb\":4}").getSpellbook());
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[],\"sb\":9}").getSpellbook());
+		// nothing is known about a setup that couldn't be read
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupRepository.parseSetup(gson, "Vorkath", "not json").getSpellbook());
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupEntry.bankTag("Clues", 1).getSpellbook());
+
+		assertEquals("Lunar spellbook", SpellbookOverlay.label(2, 2));
+		assertEquals("Needs Lunar spellbook", SpellbookOverlay.label(2, 0));
+		assertNull(SpellbookOverlay.label(SetupEntry.NO_SPELLBOOK, 0));
+	}
+
+	@Test
 	public void iconFallsBackToWeapon()
 	{
 		final String json = "{\"inv\":[],\"eq\":[{\"id\":10828},null,null,{\"id\":4151,\"f\":true}],\"name\":\"Whip\",\"hc\":\"#FFFF0000\"}";

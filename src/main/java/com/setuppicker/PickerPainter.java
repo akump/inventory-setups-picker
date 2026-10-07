@@ -9,6 +9,7 @@ import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
 
@@ -31,6 +32,11 @@ public final class PickerPainter
 	private static final int STAR_SIZE = 7;
 	private static final int CLOCK_SIZE = 9;
 	private static final int SOURCE_SIZE = 9;
+	private static final int NOTE_WIDTH = 7;
+	private static final int NOTE_HEIGHT = 9;
+	private static final int NOTES_PADDING = 6;
+	private static final int NOTES_MAX_LINES = 8;
+	private static final int NOTES_WIDTH = 190;
 	private static final int SECTION_ARROW_WIDTH = 5;
 
 	private final PickerTheme theme;
@@ -280,6 +286,11 @@ public final class PickerPainter
 				textRight -= CLOCK_SIZE + 3;
 				paintClock(g, textRight + 3 + CLOCK_SIZE / 2, row.y + row.height / 2);
 			}
+			if (view.isNotesShown() && !setup.getNotes().isEmpty())
+			{
+				textRight -= NOTE_WIDTH + 3;
+				paintNote(g, textRight + 3, row.y + (row.height - NOTE_HEIGHT) / 2);
+			}
 
 			g.setColor(setup.getDisplayColor() != null ? setup.getDisplayColor() : (active ? theme.getAccent() : theme.getText()));
 			g.drawString(truncate(fm, setup.getName(), textRight - textX), textX, baseline(fm, row));
@@ -355,6 +366,132 @@ public final class PickerPainter
 		arrow.addPoint(base + direction * SECTION_ARROW_WIDTH, cy);
 		arrow.addPoint(base, cy + 4);
 		g.fill(arrow);
+	}
+
+	/**
+	 * Marks a setup that has notes: a page with a couple of lines of writing on it.
+	 */
+	private void paintNote(Graphics2D g, int x, int y)
+	{
+		g.setColor(theme.getMutedText());
+		g.drawRect(x, y, NOTE_WIDTH - 1, NOTE_HEIGHT - 1);
+		g.drawLine(x + 2, y + 3, x + NOTE_WIDTH - 3, y + 3);
+		g.drawLine(x + 2, y + 5, x + NOTE_WIDTH - 3, y + 5);
+	}
+
+	/**
+	 * Draws the notes of the setup under the mouse, or else of the one the keyboard selection is on, in a box
+	 * beside the picker, level with the setup. Nothing is drawn when it has no notes, or when notes aren't shown.
+	 *
+	 * @param mouse      mouse position on the canvas, or null
+	 * @param canvas     the area the box has to stay within
+	 * @param preferLeft put the box to the left of the picker when there is room on both sides, as for the list
+	 *                   that has the bank on its right. It goes on the other side when there's only room there.
+	 */
+	public void paintNotes(Graphics2D g, PickerLayout layout, PickerModel.View view, Point mouse, Font font,
+		Rectangle canvas, boolean preferLeft)
+	{
+		if (!view.isNotesShown() || layout.isCollapsed())
+		{
+			return;
+		}
+		final List<PickerRow> rows = view.getRows();
+		final int hovered = mouse == null ? -1 : layout.rowAt(mouse);
+		final int index = hovered >= 0 ? view.getScroll() + hovered : (view.isSearchFocused() ? view.getSelected() : -1);
+		final SetupEntry setup = index >= 0 && index < rows.size() ? rows.get(index).getSetup() : null;
+		if (setup == null || setup.getNotes().isEmpty())
+		{
+			return;
+		}
+
+		g.setFont(font);
+		final FontMetrics fm = g.getFontMetrics();
+		final Rectangle bounds = layout.getBounds();
+		final int leftRoom = bounds.x - canvas.x;
+		final int rightRoom = canvas.x + canvas.width - bounds.x - bounds.width;
+		final boolean left = leftRoom >= NOTES_WIDTH && (preferLeft || rightRoom < NOTES_WIDTH)
+			// too narrow a canvas for it either way: whichever side has more of it
+			|| rightRoom < NOTES_WIDTH && leftRoom > rightRoom;
+		final int width = Math.max(4 * NOTES_PADDING, Math.min(NOTES_WIDTH, left ? leftRoom : rightRoom));
+		final List<String> lines = wrap(fm, setup.getNotes(), width - 2 * NOTES_PADDING, NOTES_MAX_LINES);
+		final int height = lines.size() * fm.getHeight() + 2 * NOTES_PADDING;
+
+		// sharing the picker's edge, and starting level with the setup unless that runs off the bottom
+		final int row = index - view.getScroll();
+		final int level = row >= 0 && row < layout.getVisibleRows() ? layout.getRow(row).y : layout.getList().y;
+		final int y = Math.max(canvas.y, Math.min(level, canvas.y + canvas.height - height));
+		final Rectangle box = new Rectangle(left ? bounds.x - width + 1 : bounds.x + bounds.width - 1, y, width, height);
+
+		g.setColor(theme.getBackground());
+		g.fill(box);
+		g.setColor(theme.getBorder());
+		g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
+		g.setColor(BORDER_OUTER);
+		g.drawRect(box.x, box.y, box.width - 1, box.height - 1);
+
+		g.setColor(theme.getText());
+		int baseline = box.y + NOTES_PADDING + fm.getAscent();
+		for (String line : lines)
+		{
+			g.drawString(line, box.x + NOTES_PADDING, baseline);
+			baseline += fm.getHeight();
+		}
+	}
+
+	/**
+	 * Breaks text into lines no wider than given, at spaces where it can, keeping the line breaks it has.
+	 *
+	 * @param maxLines the most lines to return. Text that would take more is cut short there with an ellipsis.
+	 */
+	static List<String> wrap(FontMetrics fm, String text, int maxWidth, int maxLines)
+	{
+		final List<String> lines = new ArrayList<>();
+		for (String paragraph : text.replace("\r", "").replace('\t', ' ').split("\n"))
+		{
+			String line = "";
+			for (String word : paragraph.trim().split(" +"))
+			{
+				// a word too long for a line of its own is broken wherever it has to be
+				while (fm.stringWidth(word) > maxWidth && word.length() > 1)
+				{
+					if (!line.isEmpty())
+					{
+						lines.add(line);
+						line = "";
+					}
+					int fits = 1;
+					while (fits < word.length() && fm.stringWidth(word.substring(0, fits + 1)) <= maxWidth)
+					{
+						fits++;
+					}
+					lines.add(word.substring(0, fits));
+					word = word.substring(fits);
+				}
+				final String longer = line.isEmpty() ? word : line + " " + word;
+				if (fm.stringWidth(longer) <= maxWidth)
+				{
+					line = longer;
+				}
+				else
+				{
+					lines.add(line);
+					line = word;
+				}
+			}
+			lines.add(line);
+		}
+		if (lines.size() <= maxLines)
+		{
+			return lines;
+		}
+		final List<String> cut = new ArrayList<>(lines.subList(0, maxLines));
+		String last = cut.get(maxLines - 1);
+		while (!last.isEmpty() && fm.stringWidth(last + "...") > maxWidth)
+		{
+			last = last.substring(0, last.length() - 1);
+		}
+		cut.set(maxLines - 1, last + "...");
+		return cut;
 	}
 
 	/**

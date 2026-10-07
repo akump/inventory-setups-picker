@@ -205,13 +205,15 @@ public class SetupRepository
 
 	/**
 	 * Builds the list entry for a setup from its saved json. The name comes from the API, so a setup whose
-	 * json is missing or unreadable still gets listed, just without its icon, color and favorite flag.
+	 * json is missing or unreadable still gets listed, just without its icon, color, favorite flag and notes.
 	 */
 	static SetupEntry parseSetup(Gson gson, String name, String json)
 	{
 		boolean favorite = false;
 		Color displayColor = null;
 		int iconItemId = -1;
+		String notes = "";
+		int spellbook = SetupEntry.NO_SPELLBOOK;
 		try
 		{
 			final JsonObject setup = json == null ? null : gson.fromJson(json, JsonObject.class);
@@ -221,6 +223,16 @@ public class SetupRepository
 				if (setup.has("dc"))
 				{
 					displayColor = gson.fromJson(setup.get("dc"), Color.class);
+				}
+				if (setup.has("notes") && setup.get("notes").isJsonPrimitive())
+				{
+					notes = setup.get("notes").getAsString().trim();
+				}
+				// Left out when it's the standard one, which is 0. 4 is for "none".
+				spellbook = setup.has("sb") ? setup.get("sb").getAsInt() : 0;
+				if (spellbook < 0 || spellbook > 3)
+				{
+					spellbook = SetupEntry.NO_SPELLBOOK;
 				}
 				if (setup.has("iId"))
 				{
@@ -241,7 +253,7 @@ public class SetupRepository
 		{
 			iconItemId = ItemID._100GUIDE_GUIDECAKE;
 		}
-		return new SetupEntry(name, favorite, displayColor, iconItemId);
+		return new SetupEntry(name, favorite, displayColor, iconItemId, notes, spellbook);
 	}
 
 	/**

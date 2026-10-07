@@ -80,6 +80,8 @@ public class SetupPickerOverlay extends Overlay
 		final PickerModel.View view = model.view();
 		final int rowHeight = config.showIcons() ? PickerLayout.ROW_HEIGHT_ICONS : PickerLayout.ROW_HEIGHT_TEXT;
 		final PickerLayout newLayout;
+		// which side of the picker its box of notes goes on, given the choice
+		boolean notesOnLeft = false;
 		if (view.isPaletteOpen())
 		{
 			newLayout = PickerLayout.computePalette(new Rectangle(client.getCanvasWidth(), client.getCanvasHeight()),
@@ -96,6 +98,8 @@ public class SetupPickerOverlay extends Overlay
 			newLayout = PickerLayout.compute(bank.getBounds(), client.getCanvasWidth(),
 				config.side() == SetupPickerConfig.Side.LEFT, config.width(), config.collapsed(), config.verticalWhenCollapsed(),
 				view.getRows().size(), rowHeight);
+			// away from the bank, rather than over it
+			notesOnLeft = newLayout.getBounds().x < bank.getBounds().x;
 		}
 		// clamps the scroll position to what now fits, so take the view afterwards
 		model.setVisibleRows(newLayout.getVisibleRows());
@@ -109,10 +113,14 @@ public class SetupPickerOverlay extends Overlay
 		final PickerTheme theme = new PickerTheme(config.backgroundColor(), config.headerColor(), config.borderColor(),
 			config.accentColor(), config.textColor());
 		final String title = config.source() == SetupPickerConfig.Source.BANK_TAGS ? "Bank tags" : "Setups";
-		new PickerPainter(theme, title).paint(graphics, newLayout, model.view(),
+		final PickerPainter painter = new PickerPainter(theme, title);
+		final PickerModel.View clamped = model.view();
+		painter.paint(graphics, newLayout, clamped,
 			hover,
 			config.showIcons() ? itemManager::getImage : null,
 			FontManager.getRunescapeSmallFont(), status);
+		painter.paintNotes(graphics, newLayout, clamped, hover, FontManager.getRunescapeSmallFont(),
+			new Rectangle(client.getCanvasWidth(), client.getCanvasHeight()), notesOnLeft);
 		return null;
 	}
 }

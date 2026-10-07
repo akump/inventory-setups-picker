@@ -67,6 +67,19 @@ your sections and "Unassigned". A setup and a tag with the same name are listed 
 
 Bank tags have no color or favorite flag. Tags opened from their tabs count as recently used too.
 
+## Notes
+
+With **Show notes** turned on, setups that have notes in Inventory Setups are marked with a small page. The notes
+of the setup that is selected in the popup, or under the mouse in either list, are shown in a box beside the list,
+level with the setup. Beside the bank, the box goes on the side away from the bank when there is room.
+Long notes are cut short after eight lines.
+
+## Spellbook
+
+With **Show spellbook** turned on, a line under the bank's bottom right corner says which spellbook the open setup
+is for, such as "Lunar spellbook". When you are on a different one it reads "Needs Lunar spellbook" in red. Nothing is shown for setups
+whose spellbook is set to none in Inventory Setups, or that aren't filtering the bank.
+
 ## Options at a glance
 
 <img src="docs/options.png" alt="Three options: recently used setups listed first with a clock, a popup in custom colors, and the list collapsed to a vertical tab beside the bank" width="700">
@@ -100,6 +113,7 @@ its name in the settings and choose "Reset".
 | Start on open setup | On | Open the popup with the already open setup selected. |
 | Popup rows | 10 | How many rows the popup shows before it scrolls. |
 | Show icons | On | Show each setup's icon next to its name. |
+| Show notes | Off | Mark setups that have notes, and show the notes of the selected or hovered one beside the list. |
 | Sort alphabetically | On | List setups by name instead of in the side panel's order. |
 | Favorites first | On | List favorited setups before the rest. |
 | Recently used | 0 | How many recently opened setups to list at the top. 0 turns it off. |
@@ -109,6 +123,7 @@ its name in the settings and choose "Reset".
 | Show beside bank | On | Show the list next to the bank while it is open. |
 | Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. |
 | Width | 160 | Width of the list beside the bank, in pixels. |
+| Show spellbook | Off | Say under the bank's bottom right corner which spellbook the open setup is for, in red when you're on another. |
 | Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. |
 | Colors | | Background, title bar, border, accent and text colors. |
 

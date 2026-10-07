@@ -80,6 +80,9 @@ public class SetupPickerPlugin extends Plugin
 	@Inject
 	private PickerInput input;
 
+	@Inject
+	private SpellbookOverlay spellbookOverlay;
+
 	private final AtomicBoolean refreshQueued = new AtomicBoolean();
 	private final RecentTagTracker recentTagTracker = new RecentTagTracker();
 	// The names of the bank tags listed, by their standardized form. Client thread only.
@@ -101,6 +104,7 @@ public class SetupPickerPlugin extends Plugin
 	protected void startUp()
 	{
 		overlayManager.add(overlay);
+		overlayManager.add(spellbookOverlay);
 		mouseManager.registerMouseListener(input);
 		mouseManager.registerMouseWheelListener(input);
 		keyManager.registerKeyListener(input);
@@ -118,6 +122,7 @@ public class SetupPickerPlugin extends Plugin
 	protected void shutDown()
 	{
 		overlayManager.remove(overlay);
+		overlayManager.remove(spellbookOverlay);
 		mouseManager.unregisterMouseListener(input);
 		mouseManager.unregisterMouseWheelListener(input);
 		keyManager.unregisterKeyListener(input);
@@ -298,10 +303,20 @@ public class SetupPickerPlugin extends Plugin
 				final boolean setupsOn = isPluginEnabled(INVENTORY_SETUPS_PLUGIN_NAME);
 				final boolean bankTagsOn = isPluginEnabled(BANK_TAGS_PLUGIN_NAME);
 				final List<SetupEntry> setups = new ArrayList<>();
-				if (source.hasSetups())
+				// whatever is listed, the open setup's spellbook can be shown on the bank
+				final Map<String, Integer> spellbooks = new HashMap<>();
+				for (SetupEntry setup : repository.loadSetups(config.alphabetical(), config.favoritesFirst()))
 				{
-					setups.addAll(repository.loadSetups(config.alphabetical(), config.favoritesFirst()));
+					if (source.hasSetups())
+					{
+						setups.add(setup);
+					}
+					if (setup.getSpellbook() != SetupEntry.NO_SPELLBOOK)
+					{
+						spellbooks.put(setup.getName(), setup.getSpellbook());
+					}
 				}
+				spellbookOverlay.setSpellbooks(spellbooks);
 				final Map<String, String> tagNames = new HashMap<>();
 				// its tabs stay saved while Bank Tags is off, but can't be opened
 				if (source.hasBankTags() && bankTagsOn)
@@ -318,6 +333,7 @@ public class SetupPickerPlugin extends Plugin
 					? repository.loadSections() : Collections.emptyList();
 				model.setSectionPages(config.sectionPages());
 				model.setFuzzySearch(config.fuzzySearch());
+				model.setShowNotes(config.showNotes());
 				model.setStartOnActiveSetup(config.startOnOpenSetup());
 				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst(), recent), setups.size());
 				overlay.setStatus(status(source, setupsOn, bankTagsOn));

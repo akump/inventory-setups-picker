@@ -10,19 +10,45 @@ public final class SetupEntry
 	// Starts the key of a bank tag. Not something a name can have in it, so a setup and a tag never share a key.
 	private static final char BANK_TAG_KEY_PREFIX = '\u0001';
 
+	/**
+	 * For a setup that isn't for any spellbook in particular.
+	 */
+	public static final int NO_SPELLBOOK = -1;
+
 	private final String name;
 	private final boolean favorite;
 	private final Color displayColor;
 	private final int iconItemId;
 	private final boolean bankTag;
+	private final String notes;
+	private final int spellbook;
 
 	public SetupEntry(String name, boolean favorite, Color displayColor, int iconItemId)
 	{
-		this(name, favorite, displayColor, iconItemId, false);
+		this(name, favorite, displayColor, iconItemId, "");
 	}
 
-	private SetupEntry(String name, boolean favorite, Color displayColor, int iconItemId, boolean bankTag)
+	/**
+	 * @param notes what the user wrote in the setup's notes in Inventory Setups, or "" for nothing
+	 */
+	public SetupEntry(String name, boolean favorite, Color displayColor, int iconItemId, String notes)
 	{
+		this(name, favorite, displayColor, iconItemId, notes, NO_SPELLBOOK);
+	}
+
+	/**
+	 * @param spellbook the spellbook the setup is for, as Inventory Setups numbers them, or {@link #NO_SPELLBOOK}
+	 */
+	public SetupEntry(String name, boolean favorite, Color displayColor, int iconItemId, String notes, int spellbook)
+	{
+		this(name, favorite, displayColor, iconItemId, notes, spellbook, false);
+	}
+
+	private SetupEntry(String name, boolean favorite, Color displayColor, int iconItemId, String notes, int spellbook,
+		boolean bankTag)
+	{
+		this.spellbook = spellbook;
+		this.notes = notes;
 		this.name = name;
 		this.favorite = favorite;
 		this.displayColor = displayColor;
@@ -35,7 +61,7 @@ public final class SetupEntry
 	 */
 	public static SetupEntry bankTag(String name, int iconItemId)
 	{
-		return new SetupEntry(name, false, null, iconItemId, true);
+		return new SetupEntry(name, false, null, iconItemId, "", NO_SPELLBOOK, true);
 	}
 
 	/**
@@ -79,6 +105,22 @@ public final class SetupEntry
 	public Color getDisplayColor()
 	{
 		return displayColor;
+	}
+
+	/**
+	 * The setup's notes from Inventory Setups, or "" when it has none.
+	 */
+	public String getNotes()
+	{
+		return notes;
+	}
+
+	/**
+	 * The spellbook the setup is for: 0 for standard, 1 ancient, 2 lunar, 3 arceuus, or {@link #NO_SPELLBOOK}.
+	 */
+	public int getSpellbook()
+	{
+		return spellbook;
 	}
 
 	public int getIconItemId()
