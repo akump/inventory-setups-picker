@@ -54,6 +54,18 @@ select it and press `Enter`, to see its setups on a page of their own, and click
 `Left` or `Backspace` in an empty search box, to go back. Typing on a section's page searches that section; typing in the list of sections
 still searches every setup.
 
+## Bank tags
+
+The **List** setting chooses what the lists show: your setups from Inventory Setups (the default), your tag tabs
+from RuneLite's Bank Tags plugin, or both. Picking a bank tag opens it, along with its layout if it has one, the
+same as clicking its tab. Picking the tag that is already open leaves it open.
+
+With both listed, each row is marked with where it is from: a little person for a setup, a tag for a bank
+tag. Bank tags have no sections, so when the list is grouped by section they go under a "Bank tags" heading after
+your sections and "Unassigned". A setup and a tag with the same name are listed separately.
+
+Bank tags have no color or favorite flag. Tags opened from their tabs count as recently used too.
+
 ## Options at a glance
 
 <img src="docs/options.png" alt="Three options: recently used setups listed first with a clock, a popup in custom colors, and the list collapsed to a vertical tab beside the bank" width="700">
@@ -81,6 +93,7 @@ its name in the settings and choose "Reset".
 
 | Setting | Default | What it does |
 | --- | --- | --- |
+| List | Inventory Setups | What to list: Inventory Setups, Bank Tags, or both. |
 | Open hotkey | K | The key that opens the popup. Only the key is used; the modifier comes from the next setting. |
 | Require Ctrl/Cmd | On | Require Cmd (Mac) or Ctrl (Windows/Linux) with the hotkey. Follows Platform Keys' key profile when that plugin is on. |
 | Start on open setup | On | Open the popup with the already open setup selected. |
@@ -100,10 +113,10 @@ its name in the settings and choose "Reset".
 
 ## Requirements
 
-Inventory Setups must be installed and enabled. The picker lists and opens the setups you keep there; it does not
-store any setups of its own.
+Inventory Setups must be installed and enabled to list setups, and RuneLite's Bank Tags plugin enabled to list
+bank tags. The picker lists and opens what you keep there; it does not store any setups or tags of its own.
 
 ## Development
 
 `./gradlew runClient` starts RuneLite with the plugin loaded. `./gradlew test` also writes a rendering of both
-views to `build/preview.png`.
+views to `build/preview.png`, and of setups and bank tags listed together to `build/preview-mixed.png`.
