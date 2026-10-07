@@ -1,7 +1,8 @@
 # Inventory Setups Picker
 
 A companion to the [Inventory Setups](https://github.com/dillydill123/inventory-setups) plugin that lets you open
-your setups from inside the game instead of the side panel.
+your setups from inside the game instead of the side panel. It can also list your Bank Tag tabs and open them with
+their layouts, on their own or alongside your setups.
 
 <img src="docs/sections.gif" alt="The hotkey popup listing setups under their sections, then filtered by a section's name and by setup name" width="420">
 
@@ -54,7 +55,7 @@ select it and press `Enter`, to see its setups on a page of their own, and click
 `Left` or `Backspace` in an empty search box, to go back. Typing on a section's page searches that section; typing in the list of sections
 still searches every setup.
 
-## Bank tags
+## Bank tags and layouts
 
 The **List** setting chooses what the lists show: your setups from Inventory Setups (the default), your tag tabs
 from RuneLite's Bank Tags plugin, or both. Picking a bank tag opens it, along with its layout if it has one, the
@@ -93,7 +94,7 @@ its name in the settings and choose "Reset".
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| List | Inventory Setups | What to list: Inventory Setups, Bank Tags, or both. |
+| List | Inventory Setups | What to list: Inventory Setups, Bank Tags (opened with their layouts), or both. |
 | Open hotkey | K | The key that opens the popup. Only the key is used; the modifier comes from the next setting. |
 | Require Ctrl/Cmd | On | Require Cmd (Mac) or Ctrl (Windows/Linux) with the hotkey. Follows Platform Keys' key profile when that plugin is on. |
 | Start on open setup | On | Open the popup with the already open setup selected. |
@@ -115,6 +116,11 @@ its name in the settings and choose "Reset".
 
 Inventory Setups must be installed and enabled to list setups, and RuneLite's Bank Tags plugin enabled to list
 bank tags. The picker lists and opens what you keep there; it does not store any setups or tags of its own.
+
+## Credits
+
+The Bank Tags support is based on Bank Tag Picker by **Ian-Fund**, a fork of this plugin that lists and opens
+Bank Tag tabs and their layouts. Thanks to Ian-Fund for that work.
 
 ## Development
 

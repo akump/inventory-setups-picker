@@ -33,8 +33,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 	name = "Inventory Setups Picker",
-	description = "Hotkey search for your Inventory Setups and Bank Tags: open any setup or tag by typing its name",
-	tags = {"inventory", "setups", "loadout", "preset", "gear", "bank", "tags", "layouts", "hotkey", "search", "quick", "switch", "picker"}
+	description = "Hotkey search for your Inventory Setups and Bank Tag Layouts: open any setup or bank tag by typing its name",
+	tags = {"inventory", "setups", "loadout", "preset", "gear", "bank", "tags", "tag", "layout", "layouts", "hotkey", "search", "quick", "switch", "picker"}
 )
 // for its BankTagsService
 @PluginDependency(BankTagsPlugin.class)
