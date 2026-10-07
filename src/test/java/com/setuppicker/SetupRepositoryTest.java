@@ -181,6 +181,42 @@ public class SetupRepositoryTest
 		assertTrue(PickerRow.RECENT.isBuiltIn());
 	}
 
+	private static List<SetupEntry> setupsAndBankTags()
+	{
+		final List<SetupEntry> setups = fiveSetups();
+		setups.add(SetupEntry.bankTag("Zulrah", 1));
+		setups.add(SetupEntry.bankTag("Clues", 1));
+		return SetupRepository.sort(setups, true, true);
+	}
+
+	@Test
+	public void bankTagsAreMixedInWithThePlainList()
+	{
+		// a tag is told apart from the setup of the same name by its key, which is what the recently used go by
+		assertEquals("Zulrah* Araxxor Vorkath barrows Cerberus Clues Zulrah",
+			describe(SetupRepository.group(setupsAndBankTags(), new ArrayList<>(), true, true,
+				Arrays.asList(SetupEntry.bankTagKey("Zulrah")))));
+	}
+
+	@Test
+	public void bankTagsGetAHeadingWhenTheListIsInSections()
+	{
+		// the section has the setup called Zulrah in it, not the tag
+		final List<SetupSection> sections = Arrays.asList(new SetupSection("Bossing", null, Arrays.asList("Zulrah", "Clues")));
+		final List<PickerRow> rows = SetupRepository.group(setupsAndBankTags(), sections, true, true,
+			Arrays.asList(SetupEntry.bankTagKey("Clues"), "Zulrah"));
+		assertEquals("[Recent] Clues* Zulrah* [Bossing] Zulrah [Unassigned] Araxxor Vorkath barrows Cerberus [Bank tags] Clues Zulrah",
+			describe(rows));
+		assertTrue(rows.get(1).getSetup().isBankTag());
+		assertFalse(rows.get(2).getSetup().isBankTag());
+		assertFalse(rows.get(4).getSetup().isBankTag());
+		assertTrue(PickerRow.BANK_TAGS.isBuiltIn());
+
+		// tags alone don't make it a list in sections
+		assertEquals("Clues Zulrah", describe(SetupRepository.group(
+			Arrays.asList(SetupEntry.bankTag("Clues", 1), SetupEntry.bankTag("Zulrah", 1)), sections, true, true)));
+	}
+
 	@Test
 	public void markingASetupUsedMovesItToTheFront()
 	{

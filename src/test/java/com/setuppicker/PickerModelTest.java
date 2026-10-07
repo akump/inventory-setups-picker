@@ -374,6 +374,30 @@ public class PickerModelTest
 	}
 
 	@Test
+	public void aBankTagIsOpenOnlyWhenTheTagOfItsNameIs()
+	{
+		final SetupEntry setup = new SetupEntry("Zulrah", false, null, 1);
+		final SetupEntry tag = SetupEntry.bankTag("Zulrah", 1);
+		// only setups listed: nothing to tell apart
+		model.setSetups(Arrays.asList(setup));
+		assertFalse(model.view().isMixed());
+		model.setSetups(Arrays.asList(setup, tag));
+		assertTrue(model.view().isMixed());
+
+		model.setActiveSetup("Zulrah");
+		assertTrue(model.view().isActive(setup));
+		assertFalse(model.view().isActive(tag));
+
+		model.setActiveSetup("");
+		model.setActiveBankTag("Zulrah");
+		assertFalse(model.view().isActive(setup));
+		assertTrue(model.view().isActive(tag));
+		// the popup starts on the tag, not on the setup listed above it
+		model.openPalette();
+		assertTrue(model.getSelectedSetup().isBankTag());
+	}
+
+	@Test
 	public void popupStartsAtTheTopWithNothingOpen()
 	{
 		model.openPalette();

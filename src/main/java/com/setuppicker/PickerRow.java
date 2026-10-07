@@ -17,6 +17,11 @@ public final class PickerRow
 	 */
 	public static final PickerRow RECENT = new PickerRow(null, "Recent", null, false, false, 2);
 
+	/**
+	 * Heading for the bank tags, which have no sections of their own, when the list is in sections.
+	 */
+	public static final PickerRow BANK_TAGS = new PickerRow(null, "Bank tags", null, false, false, 3);
+
 	private final SetupEntry setup;
 	private final String sectionName;
 	private final Color sectionColor;
@@ -96,7 +101,7 @@ public final class PickerRow
 	 */
 	boolean sameSection(PickerRow other)
 	{
-		// a section the user happened to name "Unassigned" or "Recent" is not the built-in one
+		// a section the user happened to name "Unassigned", "Recent" or "Bank tags" is not the built-in one
 		return builtIn == other.builtIn && sectionName.equals(other.sectionName);
 	}
 

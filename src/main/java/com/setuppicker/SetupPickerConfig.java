@@ -23,12 +23,59 @@ public interface SetupPickerConfig extends Config
 		RIGHT
 	}
 
+	enum Source
+	{
+		INVENTORY_SETUPS("Inventory Setups", true, false),
+		BANK_TAGS("Bank Tags", false, true),
+		BOTH("Both", true, true);
+
+		private final String name;
+		private final boolean setups;
+		private final boolean bankTags;
+
+		Source(String name, boolean setups, boolean bankTags)
+		{
+			this.name = name;
+			this.setups = setups;
+			this.bankTags = bankTags;
+		}
+
+		boolean hasSetups()
+		{
+			return setups;
+		}
+
+		boolean hasBankTags()
+		{
+			return bankTags;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
 	@ConfigSection(
 		name = "Beside the bank",
 		description = "The list shown next to the bank interface",
 		position = 20
 	)
 	String bankSection = "bank";
+
+	@ConfigItem(
+		keyName = "source",
+		name = "List",
+		description = "What to list: your setups from Inventory Setups, your tag tabs from Bank Tags (opened along with"
+			+ " their layout, if they have one), or both. With both, each is marked with where it's from, and"
+			+ " bank tags go under a heading of their own when the list is grouped by section.",
+		position = -1
+	)
+	default Source source()
+	{
+		return Source.INVENTORY_SETUPS;
+	}
 
 	@ConfigItem(
 		keyName = "hotkey",
@@ -59,7 +106,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "startOnOpenSetup",
 		name = "Start on open setup",
 		description = "When a setup is already open, the popup opens with it selected, so pressing Enter closes it."
-			+ " When off, the selection always starts at the top.",
+			+ " (A bank tag that's already open is left open.) When off, the selection always starts at the top.",
 		position = 2
 	)
 	default boolean startOnOpenSetup()
@@ -93,7 +140,8 @@ public interface SetupPickerConfig extends Config
 	@ConfigItem(
 		keyName = "alphabetical",
 		name = "Sort alphabetically",
-		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list.",
+		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list,"
+			+ " and bank tags that of their tabs.",
 		position = 5
 	)
 	default boolean alphabetical()
@@ -141,7 +189,8 @@ public interface SetupPickerConfig extends Config
 		keyName = "groupBySection",
 		name = "Group by section",
 		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
-			+ " Typing a section's name lists its setups.",
+			+ " Typing a section's name lists its setups. Bank tags have no sections, so they are all listed"
+			+ " under Bank tags.",
 		position = 9
 	)
 	default boolean groupBySection()

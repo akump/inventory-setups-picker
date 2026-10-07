@@ -93,7 +93,8 @@ public class SetupPickerOverlay extends Overlay
 		final net.runelite.api.Point mouse = client.getMouseCanvasPosition();
 		final PickerTheme theme = new PickerTheme(config.backgroundColor(), config.headerColor(), config.borderColor(),
 			config.accentColor(), config.textColor());
-		new PickerPainter(theme).paint(graphics, newLayout, model.view(),
+		final String title = config.source() == SetupPickerConfig.Source.BANK_TAGS ? "Bank tags" : "Setups";
+		new PickerPainter(theme, title).paint(graphics, newLayout, model.view(),
 			mouse == null ? null : new Point(mouse.getX(), mouse.getY()),
 			config.showIcons() ? itemManager::getImage : null,
 			FontManager.getRunescapeSmallFont(), status);

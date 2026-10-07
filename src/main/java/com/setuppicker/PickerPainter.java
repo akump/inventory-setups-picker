@@ -28,14 +28,25 @@ public final class PickerPainter
 	private static final int ICON_HEIGHT = 16;
 	private static final int STAR_SIZE = 7;
 	private static final int CLOCK_SIZE = 9;
+	private static final int SOURCE_SIZE = 9;
 	private static final int SCROLLBAR_WIDTH = 3;
 	private static final int SECTION_ARROW_WIDTH = 5;
 
 	private final PickerTheme theme;
+	private final String title;
 
 	public PickerPainter(PickerTheme theme)
 	{
+		this(theme, "Setups");
+	}
+
+	/**
+	 * @param title what the title bar calls the things listed
+	 */
+	public PickerPainter(PickerTheme theme, String title)
+	{
 		this.theme = theme;
+		this.title = title;
 	}
 
 	/**
@@ -63,7 +74,8 @@ public final class PickerPainter
 		if (layout.isPalette())
 		{
 			final SetupEntry selected = view.getSelected() < view.getRows().size() ? view.getRows().get(view.getSelected()).getSetup() : null;
-			final boolean closes = selected != null && selected.getName().equals(view.getActiveSetup());
+			// picking the bank tag that's already open leaves it open, as clicking its tab does
+			final boolean closes = selected != null && !selected.isBankTag() && view.isActive(selected);
 			g.setColor(theme.getMutedText());
 			g.drawString(truncate(fm, "Up/Down: move   Enter: " + (closes ? "close" : "open") + "   Esc: cancel",
 				layout.getFooter().width - 8), layout.getFooter().x + 4, baseline(fm, layout.getFooter()));
@@ -87,13 +99,13 @@ public final class PickerPainter
 		}
 
 		g.setColor(theme.getAccent());
-		final String title = view.getTotal() > 0 ? "Setups (" + view.getTotal() + ")" : "Setups";
+		final String counted = view.getTotal() > 0 ? title + " (" + view.getTotal() + ")" : title;
 		if (layout.isUprightTab())
 		{
-			paintCollapsedTab(g, fm, header, title);
+			paintCollapsedTab(g, fm, header, counted);
 			return;
 		}
-		g.drawString(title, header.x + 7, baseline(fm, header));
+		g.drawString(counted, header.x + 7, baseline(fm, header));
 		if (layout.isPalette())
 		{
 			return;
@@ -222,7 +234,7 @@ public final class PickerPainter
 			}
 			final SetupEntry setup = rows.get(index).getSetup();
 
-			final boolean active = setup.getName().equals(view.getActiveSetup());
+			final boolean active = view.isActive(setup);
 			if (active)
 			{
 				g.setColor(theme.getActiveRow());
@@ -251,6 +263,12 @@ public final class PickerPainter
 			}
 
 			int textRight = row.x + row.width - 4;
+			// rightmost, so that the marks line up down the list
+			if (view.isMixed())
+			{
+				textRight -= SOURCE_SIZE + 3;
+				paintSource(g, textRight + 3, row.y + (row.height - SOURCE_SIZE) / 2, setup.isBankTag());
+			}
 			if (setup.isFavorite())
 			{
 				textRight -= STAR_SIZE + 3;
@@ -348,6 +366,42 @@ public final class PickerPainter
 		g.drawOval(cx - radius, cy - radius, CLOCK_SIZE - 1, CLOCK_SIZE - 1);
 		g.drawLine(cx, cy, cx, cy - radius + 2);
 		g.drawLine(cx, cy, cx + radius - 2, cy);
+	}
+
+	/**
+	 * Marks where a row is from when both are listed: a luggage tag for a bank tag, and for an inventory setup
+	 * a little person, after the icon of Inventory Setups.
+	 *
+	 * @param x left of the mark
+	 * @param y top of the mark
+	 */
+	private void paintSource(Graphics2D g, int x, int y, boolean bankTag)
+	{
+		g.setColor(theme.getMutedText());
+		if (bankTag)
+		{
+			// pointing left, with the hole for its string at the point
+			final int mid = y + SOURCE_SIZE / 2;
+			final Polygon tag = new Polygon();
+			tag.addPoint(x, mid);
+			tag.addPoint(x + 3, y + 1);
+			tag.addPoint(x + SOURCE_SIZE - 1, y + 1);
+			tag.addPoint(x + SOURCE_SIZE - 1, y + SOURCE_SIZE - 2);
+			tag.addPoint(x + 3, y + SOURCE_SIZE - 2);
+			g.fill(tag);
+			g.draw(tag);
+			g.setColor(theme.getBackground());
+			g.fillRect(x + 3, mid, 1, 1);
+			return;
+		}
+		// head, shoulders and arms, body, legs
+		g.fillRect(x + 3, y, 3, 3);
+		g.fillRect(x + 1, y + 3, 7, 1);
+		g.fillRect(x + 1, y + 4, 1, 2);
+		g.fillRect(x + 7, y + 4, 1, 2);
+		g.fillRect(x + 3, y + 4, 3, 3);
+		g.fillRect(x + 3, y + 7, 1, 2);
+		g.fillRect(x + 5, y + 7, 1, 2);
 	}
 
 	private void paintStar(Graphics2D g, int cx, int cy)

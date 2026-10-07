@@ -2,8 +2,11 @@ package com.setuppicker;
 
 import com.google.inject.Binder;
 import com.google.inject.Provides;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 import net.runelite.api.GameState;
@@ -22,18 +25,23 @@ import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.banktags.BankTagsPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 	name = "Inventory Setups Picker",
-	description = "Hotkey search for your Inventory Setups: open any setup by typing its name",
-	tags = {"inventory", "setups", "loadout", "preset", "gear", "bank", "hotkey", "search", "quick", "switch", "picker"}
+	description = "Hotkey search for your Inventory Setups and Bank Tags: open any setup or tag by typing its name",
+	tags = {"inventory", "setups", "loadout", "preset", "gear", "bank", "tags", "layouts", "hotkey", "search", "quick", "switch", "picker"}
 )
+// for its BankTagsService
+@PluginDependency(BankTagsPlugin.class)
 public class SetupPickerPlugin extends Plugin
 {
 	private static final String INVENTORY_SETUPS_PLUGIN_NAME = "Inventory Setups";
+	private static final String BANK_TAGS_PLUGIN_NAME = "Bank Tags";
 
 	@Inject
 	private ClientThread clientThread;
@@ -72,6 +80,9 @@ public class SetupPickerPlugin extends Plugin
 	private PickerInput input;
 
 	private final AtomicBoolean refreshQueued = new AtomicBoolean();
+	private final RecentTagTracker recentTagTracker = new RecentTagTracker();
+	// Names of the bank tags listed. Client thread only.
+	private Set<String> bankTagNames = Collections.emptySet();
 
 	@Override
 	public void configure(Binder binder)
@@ -95,7 +106,11 @@ public class SetupPickerPlugin extends Plugin
 
 		queueRefresh();
 		// Inventory Setups only announces the active setup when it changes, so ask once for the current one
-		clientThread.invokeLater(() -> model.setActiveSetup(repository.queryActiveSetup()));
+		clientThread.invokeLater(() ->
+		{
+			model.setActiveSetup(repository.queryActiveSetup());
+			recentTagTracker.reset();
+		});
 	}
 
 	@Override
@@ -126,17 +141,29 @@ public class SetupPickerPlugin extends Plugin
 			final Object active = message.getData().get(SetupRepository.DATA_ACTIVE_SETUP);
 			final String name = active instanceof String ? (String) active : "";
 			model.setActiveSetup(name);
-			if (!name.isEmpty() && config.recentCount() > 0)
+			if (!name.isEmpty() && config.source().hasSetups())
 			{
-				// This message also comes for every edit to the open setup, which leaves the list as it is.
-				// Saving it is a config change of this plugin's, which reloads the list in its new order.
-				final List<String> recent = repository.loadRecent();
-				final List<String> updated = SetupRepository.markUsed(recent, name);
-				if (updated != recent)
-				{
-					repository.saveRecent(updated);
-				}
+				// This message also comes for every edit to the open setup, which leaves the list as it is
+				markUsed(name);
 			}
+		}
+	}
+
+	/**
+	 * @param key the key of the setup or bank tag that has just been opened
+	 */
+	private void markUsed(String key)
+	{
+		if (config.recentCount() <= 0)
+		{
+			return;
+		}
+		// Saving it is a config change of this plugin's, which reloads the list in its new order
+		final List<String> recent = repository.loadRecent();
+		final List<String> updated = SetupRepository.markUsed(recent, key);
+		if (updated != recent)
+		{
+			repository.saveRecent(updated);
 		}
 	}
 
@@ -148,7 +175,11 @@ public class SetupPickerPlugin extends Plugin
 		final boolean setupEdited = SetupRepository.CONFIG_GROUP.equals(event.getGroup())
 			&& (event.getKey().startsWith(SetupRepository.CONFIG_KEY_SETUP_PREFIX)
 			|| SetupRepository.CONFIG_KEY_SECTIONS.equals(event.getKey()));
-		if (setupEdited || SetupPickerConfig.GROUP.equals(event.getGroup()))
+		// creating, deleting, renaming or reordering tag tabs, or changing a tab's icon
+		final boolean bankTagEdited = SetupRepository.BANK_TAGS_CONFIG_GROUP.equals(event.getGroup())
+			&& (SetupRepository.BANK_TAGS_TABS_KEY.equals(event.getKey())
+			|| event.getKey().startsWith(SetupRepository.BANK_TAGS_ICON_PREFIX));
+		if (setupEdited || bankTagEdited || SetupPickerConfig.GROUP.equals(event.getGroup()))
 		{
 			queueRefresh();
 		}
@@ -157,13 +188,15 @@ public class SetupPickerPlugin extends Plugin
 	@Subscribe
 	public void onProfileChanged(ProfileChanged event)
 	{
+		clientThread.invokeLater(recentTagTracker::reset);
 		queueRefresh();
 	}
 
 	@Subscribe
 	public void onPluginChanged(PluginChanged event)
 	{
-		if (INVENTORY_SETUPS_PLUGIN_NAME.equals(event.getPlugin().getName()))
+		final String name = event.getPlugin().getName();
+		if (INVENTORY_SETUPS_PLUGIN_NAME.equals(name) || BANK_TAGS_PLUGIN_NAME.equals(name))
 		{
 			queueRefresh();
 		}
@@ -192,6 +225,15 @@ public class SetupPickerPlugin extends Plugin
 	public void onClientTick(ClientTick event)
 	{
 		chatboxKeyGuard.sync(model.view().isSearchFocused());
+
+		// Bank Tags has no message for its open tag changing, so keep an eye on it
+		final String bankTag = repository.queryActiveBankTag();
+		model.setActiveBankTag(bankTag);
+		// Inventory Setups opens a tag of its own to filter the bank, which isn't one of the user's
+		if (recentTagTracker.observe(bankTag) && bankTagNames.contains(bankTag))
+		{
+			markUsed(SetupEntry.bankTagKey(bankTag));
+		}
 	}
 
 	@Subscribe
@@ -200,16 +242,18 @@ public class SetupPickerPlugin extends Plugin
 		// Nothing is drawn outside the game, so don't leave the keyboard captured by an invisible popup
 		if (event.getGameState() != GameState.LOGGED_IN)
 		{
+			recentTagTracker.reset();
 			model.resetSearch();
 		}
 	}
 
 	/**
-	 * Open the setup, or close it if it's the one already open.
+	 * Open the setup, or close it if it's the one already open. A bank tag is opened either way, which for the
+	 * one already open changes nothing, the same as clicking its tab.
 	 */
 	void toggleSetup(SetupEntry setup)
 	{
-		if (setup.getName().equals(model.view().getActiveSetup()))
+		if (!setup.isBankTag() && model.view().isActive(setup))
 		{
 			clientThread.invoke(() -> repository.close(setup.getName()));
 		}
@@ -221,7 +265,15 @@ public class SetupPickerPlugin extends Plugin
 
 	void openSetup(SetupEntry setup)
 	{
-		clientThread.invoke(() -> repository.open(setup.getName()));
+		if (setup.isBankTag())
+		{
+			// the next client tick sees it open, and counts it as recently used
+			clientThread.invoke(() -> repository.openBankTag(setup.getName()));
+		}
+		else
+		{
+			clientThread.invoke(() -> repository.open(setup.getName()));
+		}
 	}
 
 	void setCollapsed(boolean collapsed)
@@ -240,22 +292,58 @@ public class SetupPickerPlugin extends Plugin
 				refreshQueued.set(false);
 				final List<String> used = repository.loadRecent();
 				final List<String> recent = used.subList(0, Math.max(0, Math.min(config.recentCount(), used.size())));
-				final List<SetupEntry> setups = repository.loadSetups(config.alphabetical(), config.favoritesFirst());
-				final List<SetupSection> sections = config.groupBySection() ? repository.loadSections() : Collections.emptyList();
+				final SetupPickerConfig.Source source = config.source();
+				final boolean setupsOn = isPluginEnabled(INVENTORY_SETUPS_PLUGIN_NAME);
+				final boolean bankTagsOn = isPluginEnabled(BANK_TAGS_PLUGIN_NAME);
+				final List<SetupEntry> setups = new ArrayList<>();
+				if (source.hasSetups())
+				{
+					setups.addAll(repository.loadSetups(config.alphabetical(), config.favoritesFirst()));
+				}
+				final Set<String> tagNames = new HashSet<>();
+				// its tabs stay saved while Bank Tags is off, but can't be opened
+				if (source.hasBankTags() && bankTagsOn)
+				{
+					for (SetupEntry tag : repository.loadBankTags())
+					{
+						setups.add(tag);
+						tagNames.add(tag.getName());
+					}
+					SetupRepository.sort(setups, config.alphabetical(), config.favoritesFirst());
+				}
+				bankTagNames = tagNames;
+				final List<SetupSection> sections = config.groupBySection() && source.hasSetups()
+					? repository.loadSections() : Collections.emptyList();
 				model.setSectionPages(config.sectionPages());
 				model.setFuzzySearch(config.fuzzySearch());
 				model.setStartOnActiveSetup(config.startOnOpenSetup());
 				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst(), recent), setups.size());
-				overlay.setStatus(isInventorySetupsEnabled() ? "No setups yet" : "Inventory Setups is off");
+				overlay.setStatus(status(source, setupsOn, bankTagsOn));
 			});
 		}
 	}
 
-	private boolean isInventorySetupsEnabled()
+	/**
+	 * What to say in place of an empty list.
+	 */
+	static String status(SetupPickerConfig.Source source, boolean setupsOn, boolean bankTagsOn)
+	{
+		switch (source)
+		{
+			case BANK_TAGS:
+				return bankTagsOn ? "No bank tags yet" : "Bank Tags is off";
+			case BOTH:
+				return setupsOn || bankTagsOn ? "Nothing to list yet" : "Both plugins are off";
+			default:
+				return setupsOn ? "No setups yet" : "Inventory Setups is off";
+		}
+	}
+
+	private boolean isPluginEnabled(String name)
 	{
 		for (Plugin plugin : pluginManager.getPlugins())
 		{
-			if (INVENTORY_SETUPS_PLUGIN_NAME.equals(plugin.getName()))
+			if (name.equals(plugin.getName()))
 			{
 				return pluginManager.isPluginEnabled(plugin);
 			}

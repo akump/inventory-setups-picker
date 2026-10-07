@@ -129,6 +129,38 @@ public class PickerPreviewTest
 	}
 
 	@Test
+	public void renderMixedPreview() throws Exception
+	{
+		final BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = image.createGraphics();
+		g.setColor(new Color(60, 90, 60));
+		g.fillRect(0, 0, WIDTH, HEIGHT);
+
+		// Inventory setups and bank tags together: each row is marked with which it is
+		final List<SetupEntry> entries = new ArrayList<>(setups().subList(0, 5));
+		entries.add(SetupEntry.bankTag("Clues", 20));
+		entries.add(SetupEntry.bankTag("Zulrah", 21));
+		final List<SetupSection> sections = Arrays.asList(
+			new SetupSection("Bossing", new Color(120, 170, 255), Arrays.asList("Vorkath (dhcb)", "Zulrah", "Vardorvis")));
+		final PickerModel model = new PickerModel();
+		model.setRows(SetupRepository.group(entries, sections, false, true, Arrays.asList(SetupEntry.bankTagKey("Clues"))), entries.size());
+		model.setActiveBankTag("Zulrah");
+		final Rectangle bank = new Rectangle(220, 60, 488, 300);
+		g.setColor(new Color(73, 64, 52));
+		g.fill(bank);
+		final PickerLayout layout = PickerLayout.compute(bank, WIDTH, true, 160, false, true,
+			model.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
+		model.setVisibleRows(layout.getVisibleRows());
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, layout, model.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		g.dispose();
+
+		assertTrue(model.view().isMixed());
+		final File out = new File("build/preview-mixed.png");
+		out.getParentFile().mkdirs();
+		ImageIO.write(image, "png", out);
+	}
+
+	@Test
 	public void dockedFallsBackWhenThereIsNoRoom()
 	{
 		// fixed mode: the bank spans the game area, with the inventory to its right

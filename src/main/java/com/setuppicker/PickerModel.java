@@ -28,9 +28,15 @@ public class PickerModel
 		private final int scroll;
 		private final int selected;
 
-		private View(List<PickerRow> rows, int total, String activeSetup, String query, boolean searchFocused,
-			boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected, int caret)
+		private final String activeBankTag;
+		private final boolean mixed;
+
+		private View(List<PickerRow> rows, int total, String activeSetup, String activeBankTag, boolean mixed, String query,
+			boolean searchFocused, boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected,
+			int caret)
 		{
+			this.activeBankTag = activeBankTag;
+			this.mixed = mixed;
 			this.caret = caret;
 			this.querySelected = querySelected;
 			this.sectionPages = sectionPages;
@@ -64,6 +70,22 @@ public class PickerModel
 		public String getActiveSetup()
 		{
 			return activeSetup;
+		}
+
+		/**
+		 * Whether this is the setup that's open in Inventory Setups, or the bank tag that's open in the bank.
+		 */
+		public boolean isActive(SetupEntry setup)
+		{
+			return setup.getName().equals(setup.isBankTag() ? activeBankTag : activeSetup);
+		}
+
+		/**
+		 * Whether both inventory setups and bank tags are listed, so that they need telling apart.
+		 */
+		public boolean isMixed()
+		{
+			return mixed;
 		}
 
 		public String getQuery()
@@ -130,6 +152,8 @@ public class PickerModel
 	private List<PickerRow> filtered = Collections.emptyList();
 	private int total;
 	private String activeSetup = "";
+	private String activeBankTag = "";
+	private boolean mixed;
 	private String query = "";
 	private boolean searchFocused;
 	private boolean paletteOpen;
@@ -150,8 +174,8 @@ public class PickerModel
 
 	public synchronized View view()
 	{
-		return new View(filtered, total, activeSetup, query, searchFocused, paletteOpen, isPaged(), scroll, selected,
-			querySelected, caret);
+		return new View(filtered, total, activeSetup, activeBankTag, mixed, query, searchFocused, paletteOpen, isPaged(),
+			scroll, selected, querySelected, caret);
 	}
 
 	/**
@@ -230,6 +254,17 @@ public class PickerModel
 	{
 		rows = Collections.unmodifiableList(new ArrayList<>(newRows));
 		total = newTotal;
+		boolean setups = false;
+		boolean bankTags = false;
+		for (PickerRow row : rows)
+		{
+			if (!row.isHeader())
+			{
+				setups |= !row.getSetup().isBankTag();
+				bankTags |= row.getSetup().isBankTag();
+			}
+		}
+		mixed = setups && bankTags;
 		// a reload (e.g. after a setup is edited) shouldn't move the list under the user
 		refilter(false);
 	}
@@ -257,6 +292,19 @@ public class PickerModel
 	public synchronized void setActiveSetup(String name)
 	{
 		activeSetup = name == null ? "" : name;
+	}
+
+	/**
+	 * @param name the bank tag that's open in the bank, or "" for none
+	 */
+	public synchronized void setActiveBankTag(String name)
+	{
+		activeBankTag = name == null ? "" : name;
+	}
+
+	private boolean isActive(SetupEntry setup)
+	{
+		return setup.getName().equals(setup.isBankTag() ? activeBankTag : activeSetup);
 	}
 
 	/**
@@ -317,14 +365,14 @@ public class PickerModel
 	 */
 	private void selectActiveSetup()
 	{
-		if (!startOnActiveSetup || activeSetup.isEmpty())
+		if (!startOnActiveSetup)
 		{
 			return;
 		}
 		for (int i = 0; i < filtered.size(); i++)
 		{
 			final PickerRow row = filtered.get(i);
-			if (!row.isHeader() && row.getSetup().getName().equals(activeSetup))
+			if (!row.isHeader() && isActive(row.getSetup()))
 			{
 				selected = i;
 				// The popup's size isn't known until it is next drawn, so it is scrolled into view then

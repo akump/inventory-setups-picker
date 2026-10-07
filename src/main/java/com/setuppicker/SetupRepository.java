@@ -21,12 +21,15 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.PluginMessage;
+import net.runelite.client.plugins.banktags.BankTagsService;
+import net.runelite.client.util.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Talks to the Inventory Setups plugin. Hub plugins live in separate classloaders, so everything goes
  * through its PluginMessage API (see InventorySetupsPluginMessageHandler in that plugin) or its saved config.
+ * Also reads and opens the tag tabs of the client's own Bank Tags plugin.
  */
 @Singleton
 public class SetupRepository
@@ -52,16 +55,70 @@ public class SetupRepository
 	// and all the sections together, as a json array
 	static final String CONFIG_KEY_SECTIONS = "sections";
 
+	// Bank Tags keeps its tabs as a csv of their names, and each tab's icon under icon_<standardized name>
+	static final String BANK_TAGS_CONFIG_GROUP = "banktags";
+	static final String BANK_TAGS_TABS_KEY = "tagtabs";
+	static final String BANK_TAGS_ICON_PREFIX = "icon_";
+
 	private final EventBus eventBus;
 	private final ConfigManager configManager;
 	private final Gson gson;
+	private final BankTagsService bankTagsService;
 
 	@Inject
-	SetupRepository(EventBus eventBus, ConfigManager configManager, Gson gson)
+	SetupRepository(EventBus eventBus, ConfigManager configManager, Gson gson, BankTagsService bankTagsService)
 	{
 		this.eventBus = eventBus;
 		this.configManager = configManager;
 		this.gson = gson;
+		this.bankTagsService = bankTagsService;
+	}
+
+	/**
+	 * All bank tag tabs, in the order of the Bank Tags plugin's tabs. Unlike Inventory Setups, Bank Tags is part
+	 * of the client, so its service can be used directly.
+	 */
+	public List<SetupEntry> loadBankTags()
+	{
+		final String savedTabs = configManager.getConfiguration(BANK_TAGS_CONFIG_GROUP, BANK_TAGS_TABS_KEY);
+		final List<String> names = Text.fromCSV(savedTabs == null ? "" : savedTabs);
+		final List<SetupEntry> tags = new ArrayList<>(names.size());
+		for (String name : names)
+		{
+			// Same fallback as Bank Tags' own tabs: the spade
+			int iconItemId = ItemID.SPADE;
+			try
+			{
+				final String icon = configManager.getConfiguration(BANK_TAGS_CONFIG_GROUP, BANK_TAGS_ICON_PREFIX + Text.standardize(name));
+				if (icon != null)
+				{
+					iconItemId = Integer.parseInt(icon);
+				}
+			}
+			catch (NumberFormatException e)
+			{
+				log.debug("Couldn't read the icon of bank tag {}", name, e);
+			}
+			tags.add(SetupEntry.bankTag(name, iconItemId));
+		}
+		return tags;
+	}
+
+	/**
+	 * Name of the bank tag currently open, or "" when there is none. Call on the client thread.
+	 */
+	public String queryActiveBankTag()
+	{
+		final String active = bankTagsService.getActiveTag();
+		return active == null ? "" : active;
+	}
+
+	/**
+	 * Open a bank tag, along with its layout if it has one, as if its tab was clicked.
+	 */
+	public void openBankTag(String name)
+	{
+		bankTagsService.openBankTag(name, BankTagsService.OPTION_ALLOW_MODIFICATIONS);
 	}
 
 	/**
@@ -101,8 +158,9 @@ public class SetupRepository
 	}
 
 	/**
-	 * Puts a setup at the front of the recently used names, which are kept latest first and capped in number.
+	 * Puts a setup at the front of the recently used, which are kept latest first and capped in number.
 	 *
+	 * @param name the setup's key: its name, or for a bank tag {@link SetupEntry#bankTagKey}
 	 * @return the new list, or the same one if the setup was already at the front
 	 */
 	static List<String> markUsed(List<String> recent, String name)
@@ -124,7 +182,7 @@ public class SetupRepository
 	}
 
 	/**
-	 * The recently used setup names saved by {@link #saveRecent}, latest first.
+	 * The keys of the recently used setups and bank tags saved by {@link #saveRecent}, latest first.
 	 */
 	public List<String> loadRecent()
 	{
@@ -247,17 +305,19 @@ public class SetupRepository
 	}
 
 	/**
-	 * @param recent names of the recently used setups to list at the top, latest first. Empty for none. When
+	 * @param setups may have bank tags among them. Those aren't in any section, so when the list is in sections
+	 *               they go under a heading of their own at the end.
+	 * @param recent keys of the recently used setups to list at the top, latest first. Empty for none. When
 	 *               the list is in sections they get a heading of their own and are listed in their sections
 	 *               as well; otherwise they are simply moved to the top.
 	 */
 	static List<PickerRow> group(List<SetupEntry> setups, List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst,
 		List<String> recent)
 	{
-		final Map<String, SetupEntry> byName = new HashMap<>();
+		final Map<String, SetupEntry> byKey = new HashMap<>();
 		for (SetupEntry setup : setups)
 		{
-			byName.put(setup.getName(), setup);
+			byKey.put(setup.getKey(), setup);
 		}
 
 		final List<PickerRow> rows = new ArrayList<>();
@@ -267,7 +327,8 @@ public class SetupRepository
 			final List<SetupEntry> members = new ArrayList<>();
 			for (String name : section.getSetupNames())
 			{
-				final SetupEntry setup = byName.get(name);
+				// a setup's key is its name, so this never finds a bank tag that happens to be called the same
+				final SetupEntry setup = byKey.get(name);
 				if (setup != null)
 				{
 					members.add(setup);
@@ -281,23 +342,23 @@ public class SetupRepository
 			for (SetupEntry setup : sort(members, alphabetical, favoritesFirst))
 			{
 				rows.add(PickerRow.of(setup));
-				assigned.add(setup.getName());
+				assigned.add(setup.getKey());
 			}
 		}
 
 		final boolean sectioned = !rows.isEmpty();
 
 		final List<PickerRow> recentRows = new ArrayList<>();
-		for (String name : recent)
+		for (String key : recent)
 		{
 			// one that has since been deleted or renamed is just left out
-			final SetupEntry setup = byName.get(name);
+			final SetupEntry setup = byKey.get(key);
 			if (setup != null)
 			{
 				recentRows.add(PickerRow.recent(setup));
 				if (!sectioned)
 				{
-					assigned.add(name);
+					assigned.add(key);
 				}
 			}
 		}
@@ -310,21 +371,41 @@ public class SetupRepository
 			rows.addAll(0, recentRows);
 		}
 
-		boolean unassignedHeading = false;
+		if (!sectioned)
+		{
+			for (SetupEntry setup : setups)
+			{
+				if (!assigned.contains(setup.getKey()))
+				{
+					rows.add(PickerRow.of(setup));
+				}
+			}
+			return rows;
+		}
+		addUnder(rows, PickerRow.UNASSIGNED, setups, assigned, false);
+		addUnder(rows, PickerRow.BANK_TAGS, setups, assigned, true);
+		return rows;
+	}
+
+	/**
+	 * Lists the setups that aren't in a section, or the bank tags, under a heading that is left out if there are none.
+	 */
+	private static void addUnder(List<PickerRow> rows, PickerRow heading, List<SetupEntry> setups, Set<String> assigned, boolean bankTags)
+	{
+		boolean headed = false;
 		for (SetupEntry setup : setups)
 		{
-			if (assigned.contains(setup.getName()))
+			if (setup.isBankTag() != bankTags || assigned.contains(setup.getKey()))
 			{
 				continue;
 			}
-			if (sectioned && !unassignedHeading)
+			if (!headed)
 			{
-				rows.add(PickerRow.UNASSIGNED);
-				unassignedHeading = true;
+				rows.add(heading);
+				headed = true;
 			}
 			rows.add(PickerRow.of(setup));
 		}
-		return rows;
 	}
 
 	private static int itemIdAt(JsonArray items, int index)
