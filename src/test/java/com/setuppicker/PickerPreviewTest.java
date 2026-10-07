@@ -14,6 +14,7 @@ import javax.imageio.ImageIO;
 import net.runelite.client.ui.FontManager;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -158,6 +159,36 @@ public class PickerPreviewTest
 		final File out = new File("build/preview-mixed.png");
 		out.getParentFile().mkdirs();
 		ImageIO.write(image, "png", out);
+	}
+
+	@Test
+	public void scrollbarThumbFollowsTheScrollPositionAndBack()
+	{
+		// 30 rows, 10 of them showing
+		final PickerLayout layout = PickerLayout.computePalette(new Rectangle(WIDTH, HEIGHT), 240, 30, PickerLayout.ROW_HEIGHT_ICONS, 10);
+		final Rectangle bar = layout.getScrollbar(30);
+		assertEquals(layout.getList().y, bar.y);
+		assertEquals(layout.getList().height, bar.height);
+		assertEquals(layout.getList().x + layout.getList().width, bar.x + bar.width);
+
+		// a third of the list shows, so the thumb is a third of the bar, and runs from its top to its bottom
+		assertEquals(bar.height / 3, layout.getScrollThumb(30, 0).height);
+		assertEquals(bar.y, layout.getScrollThumb(30, 0).y);
+		final Rectangle last = layout.getScrollThumb(30, 20);
+		assertEquals(bar.y + bar.height, last.y + last.height);
+
+		// dragging the thumb to where it is for a scroll position gives that position, and stops at either end
+		for (int scroll = 0; scroll <= 20; scroll++)
+		{
+			assertEquals(scroll, layout.scrollAt(30, layout.getScrollThumb(30, scroll).y));
+		}
+		assertEquals(0, layout.scrollAt(30, bar.y - 500));
+		assertEquals(20, layout.scrollAt(30, bar.y + 500));
+
+		// nothing to scroll: no scrollbar
+		assertNull(layout.getScrollbar(10));
+		assertNull(layout.getScrollThumb(10, 0));
+		assertEquals(0, layout.scrollAt(10, bar.y + 50));
 	}
 
 	@Test

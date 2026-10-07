@@ -4,9 +4,9 @@ import com.google.inject.Binder;
 import com.google.inject.Provides;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 import net.runelite.api.GameState;
@@ -30,6 +30,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.banktags.BankTagsPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.Text;
 
 @PluginDescriptor(
 	name = "Inventory Setups Picker",
@@ -81,8 +82,8 @@ public class SetupPickerPlugin extends Plugin
 
 	private final AtomicBoolean refreshQueued = new AtomicBoolean();
 	private final RecentTagTracker recentTagTracker = new RecentTagTracker();
-	// Names of the bank tags listed. Client thread only.
-	private Set<String> bankTagNames = Collections.emptySet();
+	// The names of the bank tags listed, by their standardized form. Client thread only.
+	private Map<String, String> bankTagNames = Collections.emptyMap();
 
 	@Override
 	public void configure(Binder binder)
@@ -227,10 +228,11 @@ public class SetupPickerPlugin extends Plugin
 		chatboxKeyGuard.sync(model.view().isSearchFocused());
 
 		// Bank Tags has no message for its open tag changing, so keep an eye on it
-		final String bankTag = repository.queryActiveBankTag();
+		// Under the name it's listed by, as Bank Tags doesn't mind how a tag's name is capitalized. One that isn't
+		// listed counts as none: Inventory Setups opens a tag of its own to filter the bank.
+		final String bankTag = bankTagNames.getOrDefault(Text.standardize(repository.queryActiveBankTag()), "");
 		model.setActiveBankTag(bankTag);
-		// Inventory Setups opens a tag of its own to filter the bank, which isn't one of the user's
-		if (recentTagTracker.observe(bankTag) && bankTagNames.contains(bankTag))
+		if (recentTagTracker.observe(bankTag))
 		{
 			markUsed(SetupEntry.bankTagKey(bankTag));
 		}
@@ -300,14 +302,14 @@ public class SetupPickerPlugin extends Plugin
 				{
 					setups.addAll(repository.loadSetups(config.alphabetical(), config.favoritesFirst()));
 				}
-				final Set<String> tagNames = new HashSet<>();
+				final Map<String, String> tagNames = new HashMap<>();
 				// its tabs stay saved while Bank Tags is off, but can't be opened
 				if (source.hasBankTags() && bankTagsOn)
 				{
 					for (SetupEntry tag : repository.loadBankTags())
 					{
 						setups.add(tag);
-						tagNames.add(tag.getName());
+						tagNames.put(Text.standardize(tag.getName()), tag.getName());
 					}
 					SetupRepository.sort(setups, config.alphabetical(), config.favoritesFirst());
 				}

@@ -23,13 +23,14 @@ public final class PickerPainter
 	private static final Color SECTION_BACKGROUND = new Color(0, 0, 0, 60);
 	private static final Color FAVORITE = new Color(255, 215, 0);
 	private static final Color SCROLLBAR = new Color(120, 110, 90);
+	private static final Color SCROLLBAR_HOVER = new Color(160, 148, 120);
+	private static final Color SCROLLBAR_TRACK = new Color(0, 0, 0, 70);
 
 	private static final int ICON_WIDTH = 18;
 	private static final int ICON_HEIGHT = 16;
 	private static final int STAR_SIZE = 7;
 	private static final int CLOCK_SIZE = 9;
 	private static final int SOURCE_SIZE = 9;
-	private static final int SCROLLBAR_WIDTH = 3;
 	private static final int SECTION_ARROW_WIDTH = 5;
 
 	private final PickerTheme theme;
@@ -213,8 +214,8 @@ public final class PickerPainter
 			return;
 		}
 
-		final boolean scrollable = rows.size() > layout.getVisibleRows();
-		final int rowWidth = list.width - (scrollable ? SCROLLBAR_WIDTH + 2 : 0);
+		final Rectangle scrollbar = layout.getScrollbar(rows.size());
+		final int rowWidth = list.width - (scrollbar != null ? scrollbar.width + 2 : 0);
 
 		for (int i = 0; i < layout.getVisibleRows(); i++)
 		{
@@ -284,13 +285,13 @@ public final class PickerPainter
 			g.drawString(truncate(fm, setup.getName(), textRight - textX), textX, baseline(fm, row));
 		}
 
-		if (scrollable)
+		if (scrollbar != null)
 		{
-			final int barHeight = Math.max(8, list.height * layout.getVisibleRows() / rows.size());
-			final int maxScroll = rows.size() - layout.getVisibleRows();
-			final int barY = list.y + (list.height - barHeight) * view.getScroll() / maxScroll;
-			g.setColor(SCROLLBAR);
-			g.fillRect(list.x + list.width - SCROLLBAR_WIDTH, barY, SCROLLBAR_WIDTH, barHeight);
+			g.setColor(SCROLLBAR_TRACK);
+			g.fill(scrollbar);
+			// it can be dragged, or clicked above or below to jump there
+			g.setColor(view.isScrollbarDragged() || mouse != null && scrollbar.contains(mouse) ? SCROLLBAR_HOVER : SCROLLBAR);
+			g.fill(layout.getScrollThumb(rows.size(), view.getScroll()));
 		}
 	}
 

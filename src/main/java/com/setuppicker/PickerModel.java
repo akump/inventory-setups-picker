@@ -30,11 +30,13 @@ public class PickerModel
 
 		private final String activeBankTag;
 		private final boolean mixed;
+		private final boolean scrollbarDragged;
 
 		private View(List<PickerRow> rows, int total, String activeSetup, String activeBankTag, boolean mixed, String query,
 			boolean searchFocused, boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected,
-			int caret)
+			int caret, boolean scrollbarDragged)
 		{
+			this.scrollbarDragged = scrollbarDragged;
 			this.activeBankTag = activeBankTag;
 			this.mixed = mixed;
 			this.caret = caret;
@@ -86,6 +88,14 @@ public class PickerModel
 		public boolean isMixed()
 		{
 			return mixed;
+		}
+
+		/**
+		 * Whether the scrollbar is being dragged with the mouse.
+		 */
+		public boolean isScrollbarDragged()
+		{
+			return scrollbarDragged;
 		}
 
 		public String getQuery()
@@ -153,7 +163,10 @@ public class PickerModel
 	private int total;
 	private String activeSetup = "";
 	private String activeBankTag = "";
+	// A setup and a bank tag can be open at once. Which was opened later, for the popup to start on.
+	private boolean bankTagOpenedLast;
 	private boolean mixed;
+	private boolean scrollbarDragged;
 	private String query = "";
 	private boolean searchFocused;
 	private boolean paletteOpen;
@@ -175,7 +188,7 @@ public class PickerModel
 	public synchronized View view()
 	{
 		return new View(filtered, total, activeSetup, activeBankTag, mixed, query, searchFocused, paletteOpen, isPaged(),
-			scroll, selected, querySelected, caret);
+			scroll, selected, querySelected, caret, scrollbarDragged);
 	}
 
 	/**
@@ -291,7 +304,12 @@ public class PickerModel
 
 	public synchronized void setActiveSetup(String name)
 	{
-		activeSetup = name == null ? "" : name;
+		final String active = name == null ? "" : name;
+		if (!active.isEmpty() && !active.equals(activeSetup))
+		{
+			bankTagOpenedLast = false;
+		}
+		activeSetup = active;
 	}
 
 	/**
@@ -299,7 +317,12 @@ public class PickerModel
 	 */
 	public synchronized void setActiveBankTag(String name)
 	{
-		activeBankTag = name == null ? "" : name;
+		final String active = name == null ? "" : name;
+		if (!active.isEmpty() && !active.equals(activeBankTag))
+		{
+			bankTagOpenedLast = true;
+		}
+		activeBankTag = active;
 	}
 
 	private boolean isActive(SetupEntry setup)
@@ -322,9 +345,25 @@ public class PickerModel
 
 	public synchronized void scrollBy(int rows)
 	{
+		scrollTo(scroll + rows);
+	}
+
+	/**
+	 * @param row the row to have at the top, as near as the list can be scrolled to it
+	 */
+	public synchronized void scrollTo(int row)
+	{
 		revealSelection = false;
-		scroll += rows;
+		scroll = row;
 		clamp();
+	}
+
+	/**
+	 * Whether the scrollbar is being dragged, for it to be drawn as held.
+	 */
+	public synchronized void setScrollbarDragged(boolean dragged)
+	{
+		scrollbarDragged = dragged;
 	}
 
 	/**
@@ -361,7 +400,8 @@ public class PickerModel
 	}
 
 	/**
-	 * Start on the setup that's already open, when it's listed, so that it only takes Enter to close it.
+	 * Start on the setup that's already open, when it's listed, so that it only takes Enter to close it. With
+	 * both a setup and a bank tag open, it's whichever was opened later.
 	 */
 	private void selectActiveSetup()
 	{
@@ -369,16 +409,30 @@ public class PickerModel
 		{
 			return;
 		}
+		int open = -1;
 		for (int i = 0; i < filtered.size(); i++)
 		{
 			final PickerRow row = filtered.get(i);
-			if (!row.isHeader() && isActive(row.getSetup()))
+			if (row.isHeader() || !isActive(row.getSetup()))
 			{
-				selected = i;
-				// The popup's size isn't known until it is next drawn, so it is scrolled into view then
-				revealSelection = true;
-				return;
+				continue;
 			}
+			if (row.getSetup().isBankTag() == bankTagOpenedLast)
+			{
+				open = i;
+				break;
+			}
+			// the one opened earlier will do if the later one isn't listed
+			if (open < 0)
+			{
+				open = i;
+			}
+		}
+		if (open >= 0)
+		{
+			selected = open;
+			// The popup's size isn't known until it is next drawn, so it is scrolled into view then
+			revealSelection = true;
 		}
 	}
 

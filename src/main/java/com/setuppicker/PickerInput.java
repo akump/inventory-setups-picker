@@ -1,5 +1,6 @@
 package com.setuppicker;
 
+import java.awt.Rectangle;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -40,6 +41,8 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 	// The hotkey's own key press can also produce a typed character, which shouldn't end up in the search box
 	private boolean swallowNextTyped;
 	private final Set<Integer> swallowedPresses = new HashSet<>();
+	// While the scrollbar is being dragged: how far below the top of its thumb it was taken hold of. Else -1.
+	private int scrollGrab = -1;
 
 	@Inject
 	PickerInput(Client client, SetupPickerPlugin plugin, SetupPickerConfig config, SetupPickerOverlay overlay,
@@ -56,6 +59,9 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 	@Override
 	public MouseEvent mousePressed(MouseEvent e)
 	{
+		// in case the release that ends a drag of the scrollbar never came
+		scrollGrab = -1;
+		model.setScrollbarDragged(false);
 		final PickerLayout layout = overlay.getLayout();
 		if (layout == null || !layout.getBounds().contains(e.getPoint()))
 		{
@@ -69,7 +75,11 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 
 		if (SwingUtilities.isLeftMouseButton(e))
 		{
-			if (layout.isPalette())
+			if (grabScrollbar(layout, e))
+			{
+				// nothing else is under it
+			}
+			else if (layout.isPalette())
 			{
 				clickRow(layout, e);
 			}
@@ -109,6 +119,52 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 		overlay.setMouse(e.getPoint());
 		return new MouseEvent(e.getComponent(), e.getID(), e.getWhen(), e.getModifiersEx(), -1, -1,
 			e.getClickCount(), e.isPopupTrigger(), e.getButton());
+	}
+
+	/**
+	 * Take hold of the scrollbar if that's what was pressed. Pressing it above or below its thumb brings the
+	 * thumb there first.
+	 */
+	private boolean grabScrollbar(PickerLayout layout, MouseEvent e)
+	{
+		final PickerModel.View view = model.view();
+		final int rowCount = view.getRows().size();
+		final Rectangle bar = layout.getScrollbar(rowCount);
+		if (bar == null || !bar.contains(e.getPoint()))
+		{
+			return false;
+		}
+		final Rectangle thumb = layout.getScrollThumb(rowCount, view.getScroll());
+		scrollGrab = thumb.contains(e.getPoint()) ? e.getY() - thumb.y : thumb.height / 2;
+		model.setScrollbarDragged(true);
+		model.scrollTo(layout.scrollAt(rowCount, e.getY() - scrollGrab));
+		return true;
+	}
+
+	@Override
+	public MouseEvent mouseDragged(MouseEvent e)
+	{
+		final PickerLayout layout = overlay.getLayout();
+		if (scrollGrab < 0 || layout == null)
+		{
+			return e;
+		}
+		// wherever the mouse has got to, as with any scrollbar
+		model.scrollTo(layout.scrollAt(model.view().getRows().size(), e.getY() - scrollGrab));
+		e.consume();
+		return e;
+	}
+
+	@Override
+	public MouseEvent mouseReleased(MouseEvent e)
+	{
+		if (scrollGrab >= 0)
+		{
+			scrollGrab = -1;
+			model.setScrollbarDragged(false);
+			e.consume();
+		}
+		return e;
 	}
 
 	private void clickRow(PickerLayout layout, MouseEvent e)

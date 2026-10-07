@@ -17,6 +17,8 @@ public final class PickerLayout
 	static final int FOOTER_HEIGHT = 16;
 	static final int COLLAPSED_WIDTH = HEADER_HEIGHT;
 	static final int COLLAPSED_LENGTH = 96;
+	static final int SCROLLBAR_WIDTH = 6;
+	static final int SCROLL_THUMB_MIN = 12;
 
 	private final Rectangle bounds;
 	private final Rectangle header;
@@ -190,6 +192,55 @@ public final class PickerLayout
 	public Rectangle getRow(int row)
 	{
 		return new Rectangle(list.x, list.y + row * rowHeight, list.width, rowHeight);
+	}
+
+	/**
+	 * The strip down the right of the list that the scrollbar runs in, or null when everything fits.
+	 *
+	 * @param rowCount number of rows there are to scroll through
+	 */
+	public Rectangle getScrollbar(int rowCount)
+	{
+		if (list == null || rowCount <= visibleRows)
+		{
+			return null;
+		}
+		return new Rectangle(list.x + list.width - SCROLLBAR_WIDTH, list.y, SCROLLBAR_WIDTH, list.height);
+	}
+
+	/**
+	 * The part of the scrollbar that stands for the rows in view, or null when everything fits.
+	 *
+	 * @param scroll index of the first visible row
+	 */
+	public Rectangle getScrollThumb(int rowCount, int scroll)
+	{
+		final Rectangle bar = getScrollbar(rowCount);
+		if (bar == null)
+		{
+			return null;
+		}
+		final int height = Math.max(SCROLL_THUMB_MIN, bar.height * visibleRows / rowCount);
+		final int maxScroll = rowCount - visibleRows;
+		final int y = bar.y + (bar.height - height) * Math.max(0, Math.min(scroll, maxScroll)) / maxScroll;
+		return new Rectangle(bar.x, y, bar.width, height);
+	}
+
+	/**
+	 * The scroll position that puts the top of the scrollbar's thumb nearest to a height on the canvas, for
+	 * dragging it.
+	 */
+	public int scrollAt(int rowCount, int thumbY)
+	{
+		final Rectangle thumb = getScrollThumb(rowCount, 0);
+		if (thumb == null || list.height <= thumb.height)
+		{
+			return 0;
+		}
+		final int maxScroll = rowCount - visibleRows;
+		final int travel = list.height - thumb.height;
+		final int offset = Math.max(0, Math.min(thumbY - list.y, travel));
+		return (offset * maxScroll + travel / 2) / travel;
 	}
 
 	/**

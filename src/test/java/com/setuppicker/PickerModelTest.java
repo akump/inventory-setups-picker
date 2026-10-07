@@ -398,6 +398,29 @@ public class PickerModelTest
 	}
 
 	@Test
+	public void withASetupAndABankTagOpenThePopupStartsOnTheOneOpenedLater()
+	{
+		final SetupEntry tag = SetupEntry.bankTag("Clues", 1);
+		model.setSetups(Arrays.asList(tag, new SetupEntry("Zulrah", false, null, 1)));
+		model.setActiveSetup("Zulrah");
+		model.setActiveBankTag("Clues");
+		model.openPalette();
+		assertEquals("Clues", model.getSelectedSetup().getName());
+
+		// the open tag is reported again every tick, which doesn't make it the later one
+		model.setActiveSetup("");
+		model.setActiveSetup("Zulrah");
+		model.setActiveBankTag("Clues");
+		model.openPalette();
+		assertEquals("Zulrah", model.getSelectedSetup().getName());
+
+		// and when the later one isn't listed, it's the other
+		model.setActiveBankTag("A tag that was deleted");
+		model.openPalette();
+		assertEquals("Zulrah", model.getSelectedSetup().getName());
+	}
+
+	@Test
 	public void popupStartsAtTheTopWithNothingOpen()
 	{
 		model.openPalette();
