@@ -33,6 +33,11 @@ public class SetupPickerOverlay extends Overlay
 	private volatile PickerLayout layout;
 	private volatile String status = "";
 	private volatile Point mouse;
+	// Where the bank and the canvas were in the last rendered frame that had the list beside the bank
+	private volatile Point bankCorner;
+	private volatile Rectangle canvas;
+	// While the list beside the bank is being dragged: where its corner is from the bank's. Else null.
+	private volatile Point dragOffset;
 
 	@Inject
 	SetupPickerOverlay(Client client, SetupPickerConfig config, PickerModel model, ItemManager itemManager)
@@ -63,6 +68,44 @@ public class SetupPickerOverlay extends Overlay
 	{
 		layout = null;
 		mouse = null;
+		dragOffset = null;
+	}
+
+	/**
+	 * Show the list beside the bank with its top left corner here on the canvas, while it is being dragged.
+	 */
+	public void dragTo(Point corner)
+	{
+		final Point bank = bankCorner;
+		if (bank != null)
+		{
+			dragOffset = new Point(corner.x - bank.x, corner.y - bank.y);
+		}
+	}
+
+	/**
+	 * Where the list has been dragged to, from the bank's top left corner and kept on the canvas, for saving.
+	 * Null if it hasn't been.
+	 */
+	public Point getDragOffset()
+	{
+		final Point offset = dragOffset;
+		final Point bank = bankCorner;
+		final Rectangle area = canvas;
+		if (offset == null || bank == null || area == null)
+		{
+			return null;
+		}
+		final Point corner = PickerLayout.clamp(new Point(bank.x + offset.x, bank.y + offset.y), config.width(), area);
+		return new Point(corner.x - bank.x, corner.y - bank.y);
+	}
+
+	/**
+	 * Go back to showing the list where it is saved as being.
+	 */
+	public void endDrag()
+	{
+		dragOffset = null;
 	}
 
 	/**
@@ -95,9 +138,22 @@ public class SetupPickerOverlay extends Overlay
 				layout = null;
 				return null;
 			}
-			newLayout = PickerLayout.compute(bank.getBounds(), client.getCanvasWidth(),
-				config.side() == SetupPickerConfig.Side.LEFT, config.width(), config.collapsed(), config.verticalWhenCollapsed(),
-				view.getRows().size(), rowHeight);
+			final Rectangle area = new Rectangle(client.getCanvasWidth(), client.getCanvasHeight());
+			final Point dragged = dragOffset;
+			final Point offset = dragged != null ? dragged : config.bankOffset();
+			if (offset != null)
+			{
+				newLayout = PickerLayout.computeMoved(bank.getBounds(), area, offset, config.width(), config.collapsed(),
+					view.getRows().size(), rowHeight, config.bankRows());
+			}
+			else
+			{
+				newLayout = PickerLayout.compute(bank.getBounds(), area.width,
+					config.side() == SetupPickerConfig.Side.LEFT, config.width(), config.collapsed(), config.verticalWhenCollapsed(),
+					view.getRows().size(), rowHeight, config.bankRows());
+			}
+			bankCorner = bank.getBounds().getLocation();
+			canvas = area;
 			// away from the bank, rather than over it
 			notesOnLeft = newLayout.getBounds().x < bank.getBounds().x;
 		}

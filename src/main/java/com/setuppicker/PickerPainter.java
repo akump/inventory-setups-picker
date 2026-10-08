@@ -99,7 +99,8 @@ public final class PickerPainter
 		final Rectangle header = layout.getHeader();
 		g.setColor(theme.getHeader());
 		g.fill(header);
-		if (!layout.isPalette() && mouse != null && header.contains(mouse))
+		final boolean hovered = !layout.isPalette() && mouse != null && header.contains(mouse);
+		if (hovered)
 		{
 			g.setColor(ROW_HOVER);
 			g.fill(header);
@@ -112,11 +113,19 @@ public final class PickerPainter
 			paintCollapsedTab(g, fm, header, counted);
 			return;
 		}
-		g.drawString(counted, header.x + 7, baseline(fm, header));
 		if (layout.isPalette())
 		{
+			g.drawString(counted, header.x + 7, baseline(fm, header));
 			return;
 		}
+		// a grip, for the list beside the bank being something that can be dragged by its title bar
+		g.setColor(hovered ? theme.getAccent() : theme.getMutedText());
+		for (int dot = 0; dot < 6; dot++)
+		{
+			g.fillRect(header.x + 5 + 4 * (dot % 2), header.y + header.height / 2 - 5 + 4 * (dot / 2), 2, 2);
+		}
+		g.setColor(theme.getAccent());
+		g.drawString(counted, header.x + 16, baseline(fm, header));
 
 		// collapse arrow: points down when open, right when collapsed
 		final int cx = header.x + header.width - 11;

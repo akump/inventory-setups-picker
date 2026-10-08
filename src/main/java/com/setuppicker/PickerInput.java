@@ -1,5 +1,6 @@
 package com.setuppicker;
 
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -28,6 +29,8 @@ import net.runelite.client.input.MouseWheelListener;
 @Singleton
 public class PickerInput extends MouseAdapter implements KeyListener, MouseWheelListener
 {
+	// How far the mouse has to go with the title bar held for it to be a drag of the list, not a click
+	private static final int DRAG_THRESHOLD = 4;
 	private static final int MODIFIER_MASK = InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK
 		| InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK;
 
@@ -43,6 +46,13 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 	private final Set<Integer> swallowedPresses = new HashSet<>();
 	// While the scrollbar is being dragged: how far below the top of its thumb it was taken hold of. Else -1.
 	private int scrollGrab = -1;
+	// While the title bar of the list beside the bank is held: where the mouse went down, and how far that was
+	// from the list's top left corner. Else null.
+	private Point titlePress;
+	private Point titleGrab;
+	private boolean titleCollapsed;
+	// whether it has been moved far enough since to be dragging the list
+	private boolean moving;
 
 	@Inject
 	PickerInput(Client client, SetupPickerPlugin plugin, SetupPickerConfig config, SetupPickerOverlay overlay,
@@ -62,6 +72,10 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 		// in case the release that ends a drag of the scrollbar never came
 		scrollGrab = -1;
 		model.setScrollbarDragged(false);
+		// or the one that ends a drag of the list
+		titlePress = null;
+		moving = false;
+		overlay.endDrag();
 		final PickerLayout layout = overlay.getLayout();
 		if (layout == null || !layout.getBounds().contains(e.getPoint()))
 		{
@@ -85,8 +99,12 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 			}
 			else if (layout.getHeader().contains(e.getPoint()))
 			{
-				model.resetSearch();
-				plugin.setCollapsed(!layout.isCollapsed());
+				// Collapsed or expanded when it's let go, unless it has been dragged somewhere by then
+				titlePress = e.getPoint();
+				// from where the title bar's corner is, which for a list collapsed to an upright tab is the tab's
+				titleGrab = new Point(e.getX() - layout.getBounds().x,
+					Math.min(e.getY() - layout.getBounds().y, PickerLayout.HEADER_HEIGHT - 1));
+				titleCollapsed = layout.isCollapsed();
 			}
 			else if (layout.getSearch() != null && layout.getSearch().contains(e.getPoint()))
 			{
@@ -96,6 +114,11 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 			{
 				clickRow(layout, e);
 			}
+		}
+		else if (SwingUtilities.isRightMouseButton(e) && !layout.isPalette() && layout.getHeader().contains(e.getPoint()))
+		{
+			// back beside the bank, if it has been dragged elsewhere
+			plugin.setBankOffset(null);
 		}
 		e.consume();
 		return e;
@@ -144,6 +167,16 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 	@Override
 	public MouseEvent mouseDragged(MouseEvent e)
 	{
+		if (titlePress != null)
+		{
+			moving |= titlePress.distance(e.getPoint()) >= DRAG_THRESHOLD;
+			if (moving)
+			{
+				overlay.dragTo(new Point(e.getX() - titleGrab.x, e.getY() - titleGrab.y));
+			}
+			e.consume();
+			return e;
+		}
 		final PickerLayout layout = overlay.getLayout();
 		if (scrollGrab < 0 || layout == null)
 		{
@@ -162,6 +195,27 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 		{
 			scrollGrab = -1;
 			model.setScrollbarDragged(false);
+			e.consume();
+		}
+		if (titlePress != null)
+		{
+			if (moving)
+			{
+				final Point offset = overlay.getDragOffset();
+				if (offset != null)
+				{
+					plugin.setBankOffset(offset);
+				}
+			}
+			else
+			{
+				model.resetSearch();
+				plugin.setCollapsed(!titleCollapsed);
+			}
+			titlePress = null;
+			moving = false;
+			// only once it's saved, so that the list isn't drawn back where it was in between
+			overlay.endDrag();
 			e.consume();
 		}
 		return e;

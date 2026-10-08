@@ -55,6 +55,13 @@ select it and press `Enter`, to see its setups on a page of their own, and click
 `Left` or `Backspace` in an empty search box, to go back. Typing on a section's page searches that section; typing in the list of sections
 still searches every setup.
 
+## Moving the list beside the bank
+
+The list beside the bank can be dragged anywhere by its title bar, and stays where you leave it relative to the
+bank. A click on the title bar without moving still collapses and expands it. Away from the bank's side, the list
+runs as far down as the client does unless **Max rows** limits it, and collapses to its title bar. To put it back
+beside the bank, right-click its title bar, or change the **Bank side** setting.
+
 ## Bank tags and layouts
 
 The **List** setting chooses what the lists show: your setups from Inventory Setups (the default), your tag tabs
@@ -121,8 +128,9 @@ its name in the settings and choose "Reset".
 | Group by section | On | List setups under their Inventory Setups sections. |
 | Sections as pages | Off | List just the sections, and open one to see its setups. |
 | Show beside bank | On | Show the list next to the bank while it is open. |
-| Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. |
+| Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. Changing it also puts a list you have dragged elsewhere back beside the bank. |
 | Width | 160 | Width of the list beside the bank, in pixels. |
+| Max rows | 0 | The most rows the list beside the bank shows before it scrolls. 0 lets it run as far down as the bank does. |
 | Show spellbook | Off | Say under the bank's bottom right corner which spellbook the open setup is for, in red when you're on another. |
 | Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. |
 | Colors | | Background, title bar, border, accent and text colors. |

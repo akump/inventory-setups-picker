@@ -1,6 +1,7 @@
 package com.setuppicker;
 
 import java.awt.Color;
+import java.awt.Point;
 import java.awt.event.KeyEvent;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
@@ -16,6 +17,9 @@ public interface SetupPickerConfig extends Config
 	String GROUP = "setuppicker";
 	String KEY_COLLAPSED = "collapsed";
 	String KEY_RECENT = "recentSetups";
+	String KEY_SEEN_VERSION = "lastSeenVersion";
+	String KEY_SIDE = "side";
+	String KEY_BANK_OFFSET = "bankOffset";
 
 	enum Side
 	{
@@ -241,7 +245,7 @@ public interface SetupPickerConfig extends Config
 		description = "Say under the bank's bottom right corner which spellbook the open setup is for, in red when it isn't the one"
 			+ " you are on. Only for setups that filter the bank, and that have a spellbook set in Inventory Setups.",
 		section = bankSection,
-		position = 4
+		position = 5
 	)
 	default boolean showSpellbook()
 	{
@@ -249,9 +253,10 @@ public interface SetupPickerConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "side",
+		keyName = KEY_SIDE,
 		name = "Bank side",
-		description = "Which side of the bank the list sits on. Falls back to the other side when there is no room.",
+		description = "Which side of the bank the list sits on. Falls back to the other side when there is no room."
+			+ " The list can also be dragged anywhere by its title bar; right-clicking the title bar, or changing this setting, puts it back beside the bank.",
 		section = bankSection,
 		position = 1
 	)
@@ -273,12 +278,26 @@ public interface SetupPickerConfig extends Config
 		return 160;
 	}
 
+	@Range(max = 40)
+	@ConfigItem(
+		keyName = "bankRows",
+		name = "Max rows",
+		description = "The most rows the list beside the bank shows before it scrolls, to keep it from reaching down over"
+			+ " the inventory on a small client. 0 lets it run as far down as the bank does.",
+		section = bankSection,
+		position = 3
+	)
+	default int bankRows()
+	{
+		return 0;
+	}
+
 	@ConfigItem(
 		keyName = "verticalWhenCollapsed",
 		name = "Vertical when collapsed",
 		description = "Show the collapsed list as a narrow upright tab against the bank. When off, it collapses to its title bar.",
 		section = bankSection,
-		position = 3
+		position = 4
 	)
 	default boolean verticalWhenCollapsed()
 	{
@@ -363,5 +382,31 @@ public interface SetupPickerConfig extends Config
 	default boolean collapsed()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = KEY_SEEN_VERSION,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String lastSeenVersion()
+	{
+		return "";
+	}
+
+	/**
+	 * Where the list beside the bank has been dragged to, from the bank's top left corner. Null while it is
+	 * still at the bank's side.
+	 */
+	@ConfigItem(
+		keyName = KEY_BANK_OFFSET,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default Point bankOffset()
+	{
+		return null;
 	}
 }

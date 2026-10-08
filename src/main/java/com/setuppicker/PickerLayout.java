@@ -74,9 +74,10 @@ public final class PickerLayout
 	 * @param preferLeft sit left of the bank when both sides have room
 	 * @param uprightTab when collapsed, be a narrow upright tab rather than just the title bar
 	 * @param setupCount number of rows to list (setups and section headings), after the search is applied
+	 * @param maxRows    most rows to show before scrolling, or 0 for as many as fit down the bank's side
 	 */
 	public static PickerLayout compute(Rectangle bank, int canvasWidth, boolean preferLeft, int width,
-		boolean collapsed, boolean uprightTab, int setupCount, int rowHeight)
+		boolean collapsed, boolean uprightTab, int setupCount, int rowHeight, int maxRows)
 	{
 		final boolean upright = collapsed && uprightTab;
 		if (upright)
@@ -110,7 +111,40 @@ public final class PickerLayout
 			final Rectangle tab = new Rectangle(x, y, width, Math.min(COLLAPSED_LENGTH, bank.height));
 			return new PickerLayout(tab, tab, null, null, null, rowHeight, 0);
 		}
+		return docked(x, y, width, collapsed, bank.y + bank.height, setupCount, rowHeight, maxRows);
+	}
 
+	/**
+	 * The list of the bank's, dragged away from the bank's side to somewhere of its own.
+	 *
+	 * @param offset     where its top left corner is from the bank's, which is kept on the canvas
+	 * @param setupCount number of rows to list (setups and section headings), after the search is applied
+	 * @param maxRows    most rows to show before scrolling, or 0 for as many as fit above the canvas's bottom
+	 */
+	public static PickerLayout computeMoved(Rectangle bank, Rectangle canvas, Point offset, int width,
+		boolean collapsed, int setupCount, int rowHeight, int maxRows)
+	{
+		final Point corner = clamp(new Point(bank.x + offset.x, bank.y + offset.y), width, canvas);
+		return docked(corner.x, corner.y, width, collapsed, canvas.y + canvas.height, setupCount, rowHeight, maxRows);
+	}
+
+	/**
+	 * The nearest place to a corner that keeps a list of this width, or at least its title bar, on the canvas,
+	 * where it can be taken hold of again.
+	 */
+	public static Point clamp(Point corner, int width, Rectangle canvas)
+	{
+		final int x = Math.max(canvas.x, Math.min(corner.x, canvas.x + canvas.width - width));
+		final int y = Math.max(canvas.y, Math.min(corner.y, canvas.y + canvas.height - HEADER_HEIGHT));
+		return new Point(x, y);
+	}
+
+	/**
+	 * @param bottom how far down the canvas the list may reach
+	 */
+	private static PickerLayout docked(int x, int y, int width, boolean collapsed, int bottom, int setupCount,
+		int rowHeight, int maxRows)
+	{
 		final Rectangle header = new Rectangle(x, y, width, HEADER_HEIGHT);
 		if (collapsed)
 		{
@@ -119,9 +153,9 @@ public final class PickerLayout
 		}
 		final Rectangle search = new Rectangle(x + PADDING, y + HEADER_HEIGHT + PADDING, width - 2 * PADDING, SEARCH_HEIGHT);
 		final int listY = search.y + search.height + PADDING;
-		final int maxRows = Math.max(1, (bank.y + bank.height - listY - PADDING) / rowHeight);
+		final int fittingRows = Math.max(1, (bottom - listY - PADDING) / rowHeight);
 		// always leave one row's worth of space for the "no setups" message
-		final int visibleRows = Math.max(1, Math.min(setupCount, maxRows));
+		final int visibleRows = Math.max(1, Math.min(setupCount, maxRows > 0 ? Math.min(maxRows, fittingRows) : fittingRows));
 		final Rectangle list = new Rectangle(x + PADDING, listY, width - 2 * PADDING, visibleRows * rowHeight);
 		final Rectangle bounds = new Rectangle(x, y, width, list.y + list.height + PADDING - y);
 		return new PickerLayout(bounds, header, search, list, null, rowHeight, visibleRows);
