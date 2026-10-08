@@ -32,6 +32,36 @@ public class SetupRepositoryTest
 	}
 
 	@Test
+	public void readsNotes()
+	{
+		final SetupEntry setup = SetupRepository.parseSetup(gson, "Zulrah",
+			"{\"inv\":[],\"eq\":[],\"name\":\"Zulrah\",\"notes\":\"  Bring a ring of recoil\\nand antivenom \"}");
+		assertEquals("Bring a ring of recoil\nand antivenom", setup.getNotes());
+		// most setups have none
+		assertEquals("", SetupRepository.parseSetup(gson, "Whip", "{\"inv\":[],\"eq\":[]}").getNotes());
+		assertEquals("", SetupRepository.parseSetup(gson, "Whip", "{\"inv\":[],\"eq\":[],\"notes\":null}").getNotes());
+		assertEquals("", SetupEntry.bankTag("Clues", 1).getNotes());
+	}
+
+	@Test
+	public void readsSpellbook()
+	{
+		assertEquals(2, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[],\"sb\":2}").getSpellbook());
+		// the standard spellbook isn't saved
+		assertEquals(0, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[]}").getSpellbook());
+		// "none", and anything not known of
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[],\"sb\":4}").getSpellbook());
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupRepository.parseSetup(gson, "Vorkath", "{\"inv\":[],\"eq\":[],\"sb\":9}").getSpellbook());
+		// nothing is known about a setup that couldn't be read
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupRepository.parseSetup(gson, "Vorkath", "not json").getSpellbook());
+		assertEquals(SetupEntry.NO_SPELLBOOK, SetupEntry.bankTag("Clues", 1).getSpellbook());
+
+		assertEquals("Lunar spellbook", SpellbookOverlay.label(2, 2));
+		assertEquals("Needs Lunar spellbook", SpellbookOverlay.label(2, 0));
+		assertNull(SpellbookOverlay.label(SetupEntry.NO_SPELLBOOK, 0));
+	}
+
+	@Test
 	public void iconFallsBackToWeapon()
 	{
 		final String json = "{\"inv\":[],\"eq\":[{\"id\":10828},null,null,{\"id\":4151,\"f\":true}],\"name\":\"Whip\",\"hc\":\"#FFFF0000\"}";
@@ -179,6 +209,42 @@ public class SetupRepositoryTest
 		assertEquals("[Recent] Cerberus* Zulrah* [Bossing] Vorkath Zulrah [Unassigned] Araxxor barrows Cerberus",
 			describe(SetupRepository.group(fiveSetups(), sections, true, true, Arrays.asList("Cerberus", "Zulrah"))));
 		assertTrue(PickerRow.RECENT.isBuiltIn());
+	}
+
+	private static List<SetupEntry> setupsAndBankTags()
+	{
+		final List<SetupEntry> setups = fiveSetups();
+		setups.add(SetupEntry.bankTag("Zulrah", 1));
+		setups.add(SetupEntry.bankTag("Clues", 1));
+		return SetupRepository.sort(setups, true, true);
+	}
+
+	@Test
+	public void bankTagsAreMixedInWithThePlainList()
+	{
+		// a tag is told apart from the setup of the same name by its key, which is what the recently used go by
+		assertEquals("Zulrah* Araxxor Vorkath barrows Cerberus Clues Zulrah",
+			describe(SetupRepository.group(setupsAndBankTags(), new ArrayList<>(), true, true,
+				Arrays.asList(SetupEntry.bankTagKey("Zulrah")))));
+	}
+
+	@Test
+	public void bankTagsGetAHeadingWhenTheListIsInSections()
+	{
+		// the section has the setup called Zulrah in it, not the tag
+		final List<SetupSection> sections = Arrays.asList(new SetupSection("Bossing", null, Arrays.asList("Zulrah", "Clues")));
+		final List<PickerRow> rows = SetupRepository.group(setupsAndBankTags(), sections, true, true,
+			Arrays.asList(SetupEntry.bankTagKey("Clues"), "Zulrah"));
+		assertEquals("[Recent] Clues* Zulrah* [Bossing] Zulrah [Unassigned] Araxxor Vorkath barrows Cerberus [Bank tags] Clues Zulrah",
+			describe(rows));
+		assertTrue(rows.get(1).getSetup().isBankTag());
+		assertFalse(rows.get(2).getSetup().isBankTag());
+		assertFalse(rows.get(4).getSetup().isBankTag());
+		assertTrue(PickerRow.BANK_TAGS.isBuiltIn());
+
+		// tags alone don't make it a list in sections
+		assertEquals("Clues Zulrah", describe(SetupRepository.group(
+			Arrays.asList(SetupEntry.bankTag("Clues", 1), SetupEntry.bankTag("Zulrah", 1)), sections, true, true)));
 	}
 
 	@Test

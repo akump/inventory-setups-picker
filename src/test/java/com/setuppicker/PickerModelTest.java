@@ -374,6 +374,53 @@ public class PickerModelTest
 	}
 
 	@Test
+	public void aBankTagIsOpenOnlyWhenTheTagOfItsNameIs()
+	{
+		final SetupEntry setup = new SetupEntry("Zulrah", false, null, 1);
+		final SetupEntry tag = SetupEntry.bankTag("Zulrah", 1);
+		// only setups listed: nothing to tell apart
+		model.setSetups(Arrays.asList(setup));
+		assertFalse(model.view().isMixed());
+		model.setSetups(Arrays.asList(setup, tag));
+		assertTrue(model.view().isMixed());
+
+		model.setActiveSetup("Zulrah");
+		assertTrue(model.view().isActive(setup));
+		assertFalse(model.view().isActive(tag));
+
+		model.setActiveSetup("");
+		model.setActiveBankTag("Zulrah");
+		assertFalse(model.view().isActive(setup));
+		assertTrue(model.view().isActive(tag));
+		// the popup starts on the tag, not on the setup listed above it
+		model.openPalette();
+		assertTrue(model.getSelectedSetup().isBankTag());
+	}
+
+	@Test
+	public void withASetupAndABankTagOpenThePopupStartsOnTheOneOpenedLater()
+	{
+		final SetupEntry tag = SetupEntry.bankTag("Clues", 1);
+		model.setSetups(Arrays.asList(tag, new SetupEntry("Zulrah", false, null, 1)));
+		model.setActiveSetup("Zulrah");
+		model.setActiveBankTag("Clues");
+		model.openPalette();
+		assertEquals("Clues", model.getSelectedSetup().getName());
+
+		// the open tag is reported again every tick, which doesn't make it the later one
+		model.setActiveSetup("");
+		model.setActiveSetup("Zulrah");
+		model.setActiveBankTag("Clues");
+		model.openPalette();
+		assertEquals("Zulrah", model.getSelectedSetup().getName());
+
+		// and when the later one isn't listed, it's the other
+		model.setActiveBankTag("A tag that was deleted");
+		model.openPalette();
+		assertEquals("Zulrah", model.getSelectedSetup().getName());
+	}
+
+	@Test
 	public void popupStartsAtTheTopWithNothingOpen()
 	{
 		model.openPalette();

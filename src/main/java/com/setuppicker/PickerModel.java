@@ -28,9 +28,19 @@ public class PickerModel
 		private final int scroll;
 		private final int selected;
 
-		private View(List<PickerRow> rows, int total, String activeSetup, String query, boolean searchFocused,
-			boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected, int caret)
+		private final String activeBankTag;
+		private final boolean mixed;
+		private final boolean scrollbarDragged;
+		private final boolean notesShown;
+
+		private View(List<PickerRow> rows, int total, String activeSetup, String activeBankTag, boolean mixed, String query,
+			boolean searchFocused, boolean paletteOpen, boolean sectionPages, int scroll, int selected, boolean querySelected,
+			int caret, boolean scrollbarDragged, boolean notesShown)
 		{
+			this.notesShown = notesShown;
+			this.scrollbarDragged = scrollbarDragged;
+			this.activeBankTag = activeBankTag;
+			this.mixed = mixed;
 			this.caret = caret;
 			this.querySelected = querySelected;
 			this.sectionPages = sectionPages;
@@ -64,6 +74,38 @@ public class PickerModel
 		public String getActiveSetup()
 		{
 			return activeSetup;
+		}
+
+		/**
+		 * Whether this is the setup that's open in Inventory Setups, or the bank tag that's open in the bank.
+		 */
+		public boolean isActive(SetupEntry setup)
+		{
+			return setup.getName().equals(setup.isBankTag() ? activeBankTag : activeSetup);
+		}
+
+		/**
+		 * Whether both inventory setups and bank tags are listed, so that they need telling apart.
+		 */
+		public boolean isMixed()
+		{
+			return mixed;
+		}
+
+		/**
+		 * Whether setups' notes are shown: a mark on those that have any, and the notes of the one pointed at.
+		 */
+		public boolean isNotesShown()
+		{
+			return notesShown;
+		}
+
+		/**
+		 * Whether the scrollbar is being dragged with the mouse.
+		 */
+		public boolean isScrollbarDragged()
+		{
+			return scrollbarDragged;
 		}
 
 		public String getQuery()
@@ -130,6 +172,12 @@ public class PickerModel
 	private List<PickerRow> filtered = Collections.emptyList();
 	private int total;
 	private String activeSetup = "";
+	private String activeBankTag = "";
+	// A setup and a bank tag can be open at once. Which was opened later, for the popup to start on.
+	private boolean bankTagOpenedLast;
+	private boolean mixed;
+	private boolean scrollbarDragged;
+	private boolean showNotes;
 	private String query = "";
 	private boolean searchFocused;
 	private boolean paletteOpen;
@@ -150,8 +198,8 @@ public class PickerModel
 
 	public synchronized View view()
 	{
-		return new View(filtered, total, activeSetup, query, searchFocused, paletteOpen, isPaged(), scroll, selected,
-			querySelected, caret);
+		return new View(filtered, total, activeSetup, activeBankTag, mixed, query, searchFocused, paletteOpen, isPaged(),
+			scroll, selected, querySelected, caret, scrollbarDragged, showNotes);
 	}
 
 	/**
@@ -230,8 +278,27 @@ public class PickerModel
 	{
 		rows = Collections.unmodifiableList(new ArrayList<>(newRows));
 		total = newTotal;
+		boolean setups = false;
+		boolean bankTags = false;
+		for (PickerRow row : rows)
+		{
+			if (!row.isHeader())
+			{
+				setups |= !row.getSetup().isBankTag();
+				bankTags |= row.getSetup().isBankTag();
+			}
+		}
+		mixed = setups && bankTags;
 		// a reload (e.g. after a setup is edited) shouldn't move the list under the user
 		refilter(false);
+	}
+
+	/**
+	 * Whether to show the notes setups have in Inventory Setups.
+	 */
+	public synchronized void setShowNotes(boolean show)
+	{
+		showNotes = show;
 	}
 
 	/**
@@ -256,7 +323,30 @@ public class PickerModel
 
 	public synchronized void setActiveSetup(String name)
 	{
-		activeSetup = name == null ? "" : name;
+		final String active = name == null ? "" : name;
+		if (!active.isEmpty() && !active.equals(activeSetup))
+		{
+			bankTagOpenedLast = false;
+		}
+		activeSetup = active;
+	}
+
+	/**
+	 * @param name the bank tag that's open in the bank, or "" for none
+	 */
+	public synchronized void setActiveBankTag(String name)
+	{
+		final String active = name == null ? "" : name;
+		if (!active.isEmpty() && !active.equals(activeBankTag))
+		{
+			bankTagOpenedLast = true;
+		}
+		activeBankTag = active;
+	}
+
+	private boolean isActive(SetupEntry setup)
+	{
+		return setup.getName().equals(setup.isBankTag() ? activeBankTag : activeSetup);
 	}
 
 	/**
@@ -274,9 +364,25 @@ public class PickerModel
 
 	public synchronized void scrollBy(int rows)
 	{
+		scrollTo(scroll + rows);
+	}
+
+	/**
+	 * @param row the row to have at the top, as near as the list can be scrolled to it
+	 */
+	public synchronized void scrollTo(int row)
+	{
 		revealSelection = false;
-		scroll += rows;
+		scroll = row;
 		clamp();
+	}
+
+	/**
+	 * Whether the scrollbar is being dragged, for it to be drawn as held.
+	 */
+	public synchronized void setScrollbarDragged(boolean dragged)
+	{
+		scrollbarDragged = dragged;
 	}
 
 	/**
@@ -313,24 +419,39 @@ public class PickerModel
 	}
 
 	/**
-	 * Start on the setup that's already open, when it's listed, so that it only takes Enter to close it.
+	 * Start on the setup that's already open, when it's listed, so that it only takes Enter to close it. With
+	 * both a setup and a bank tag open, it's whichever was opened later.
 	 */
 	private void selectActiveSetup()
 	{
-		if (!startOnActiveSetup || activeSetup.isEmpty())
+		if (!startOnActiveSetup)
 		{
 			return;
 		}
+		int open = -1;
 		for (int i = 0; i < filtered.size(); i++)
 		{
 			final PickerRow row = filtered.get(i);
-			if (!row.isHeader() && row.getSetup().getName().equals(activeSetup))
+			if (row.isHeader() || !isActive(row.getSetup()))
 			{
-				selected = i;
-				// The popup's size isn't known until it is next drawn, so it is scrolled into view then
-				revealSelection = true;
-				return;
+				continue;
 			}
+			if (row.getSetup().isBankTag() == bankTagOpenedLast)
+			{
+				open = i;
+				break;
+			}
+			// the one opened earlier will do if the later one isn't listed
+			if (open < 0)
+			{
+				open = i;
+			}
+		}
+		if (open >= 0)
+		{
+			selected = open;
+			// The popup's size isn't known until it is next drawn, so it is scrolled into view then
+			revealSelection = true;
 		}
 	}
 

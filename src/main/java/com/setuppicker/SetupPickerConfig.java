@@ -23,6 +23,40 @@ public interface SetupPickerConfig extends Config
 		RIGHT
 	}
 
+	enum Source
+	{
+		INVENTORY_SETUPS("Inventory Setups", true, false),
+		BANK_TAGS("Bank Tags", false, true),
+		BOTH("Both", true, true);
+
+		private final String name;
+		private final boolean setups;
+		private final boolean bankTags;
+
+		Source(String name, boolean setups, boolean bankTags)
+		{
+			this.name = name;
+			this.setups = setups;
+			this.bankTags = bankTags;
+		}
+
+		boolean hasSetups()
+		{
+			return setups;
+		}
+
+		boolean hasBankTags()
+		{
+			return bankTags;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
 	@ConfigSection(
 		name = "Beside the bank",
 		description = "The list shown next to the bank interface",
@@ -31,12 +65,25 @@ public interface SetupPickerConfig extends Config
 	String bankSection = "bank";
 
 	@ConfigItem(
+		keyName = "source",
+		name = "List",
+		description = "What to list: your setups from Inventory Setups, your tag tabs from Bank Tags (opened along with"
+			+ " their layout, if they have one), or both. With both, each is marked with where it's from, and"
+			+ " bank tags go under a heading of their own when the list is grouped by section.",
+		position = 0
+	)
+	default Source source()
+	{
+		return Source.INVENTORY_SETUPS;
+	}
+
+	@ConfigItem(
 		keyName = "hotkey",
 		name = "Open hotkey",
 		description = "Opens the setup list anywhere in game. Only the key is used; the modifier comes from the next setting."
 			+ " Type to filter, Up/Down to move, Enter to open the setup (or close it, if it's the one already open),"
 			+ " Esc to cancel.",
-		position = 0
+		position = 1
 	)
 	default Keybind openKey()
 	{
@@ -48,7 +95,7 @@ public interface SetupPickerConfig extends Config
 		name = "Require Ctrl/Cmd",
 		description = "Require the platform modifier (Cmd on Mac, Ctrl on Windows) together with the open hotkey."
 			+ " Follows the Platform Keys plugin's key profile when that plugin is on.",
-		position = 1
+		position = 2
 	)
 	default boolean requireModifier()
 	{
@@ -59,8 +106,8 @@ public interface SetupPickerConfig extends Config
 		keyName = "startOnOpenSetup",
 		name = "Start on open setup",
 		description = "When a setup is already open, the popup opens with it selected, so pressing Enter closes it."
-			+ " When off, the selection always starts at the top.",
-		position = 2
+			+ " (A bank tag that's already open is left open.) When off, the selection always starts at the top.",
+		position = 3
 	)
 	default boolean startOnOpenSetup()
 	{
@@ -72,7 +119,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "popupRows",
 		name = "Popup rows",
 		description = "How many setups the popup shows before it scrolls",
-		position = 3
+		position = 4
 	)
 	default int popupRows()
 	{
@@ -83,7 +130,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "showIcons",
 		name = "Show icons",
 		description = "Show each setup's icon next to its name",
-		position = 4
+		position = 5
 	)
 	default boolean showIcons()
 	{
@@ -91,10 +138,23 @@ public interface SetupPickerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showNotes",
+		name = "Show notes",
+		description = "Mark the setups that have notes in Inventory Setups, and show the notes of the one that is"
+			+ " selected or under the mouse in a box beside the list",
+		position = 6
+	)
+	default boolean showNotes()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "alphabetical",
 		name = "Sort alphabetically",
-		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list.",
-		position = 5
+		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list,"
+			+ " and bank tags that of their tabs.",
+		position = 7
 	)
 	default boolean alphabetical()
 	{
@@ -105,7 +165,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "favoritesFirst",
 		name = "Favorites first",
 		description = "List favorited setups before the rest",
-		position = 6
+		position = 8
 	)
 	default boolean favoritesFirst()
 	{
@@ -118,7 +178,7 @@ public interface SetupPickerConfig extends Config
 		name = "Recently used",
 		description = "How many of the setups you opened most recently to list at the top, latest first and marked"
 			+ " with a clock. With Group by section on they get a Recent heading. 0 turns this off.",
-		position = 7
+		position = 9
 	)
 	default int recentCount()
 	{
@@ -130,7 +190,7 @@ public interface SetupPickerConfig extends Config
 		name = "Fuzzy search",
 		description = "When a search finds nothing as typed, also match names that are a typo away (\"vorkahh\") or that"
 			+ " have the typed letters in order (\"vkdh\")",
-		position = 8
+		position = 10
 	)
 	default boolean fuzzySearch()
 	{
@@ -141,8 +201,9 @@ public interface SetupPickerConfig extends Config
 		keyName = "groupBySection",
 		name = "Group by section",
 		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
-			+ " Typing a section's name lists its setups.",
-		position = 9
+			+ " Typing a section's name lists its setups. Bank tags have no sections, so they are all listed"
+			+ " under Bank tags.",
+		position = 11
 	)
 	default boolean groupBySection()
 	{
@@ -155,7 +216,7 @@ public interface SetupPickerConfig extends Config
 		description = "With Group by section on, list just the sections, and open one to see its setups on a page of"
 			+ " their own. Click the section's name at the top, or press Left or Backspace, to go back. Typing in"
 			+ " the list of sections still searches every setup.",
-		position = 10
+		position = 12
 	)
 	default boolean sectionPages()
 	{
@@ -172,6 +233,19 @@ public interface SetupPickerConfig extends Config
 	default boolean showBesideBank()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showSpellbook",
+		name = "Show spellbook",
+		description = "Say under the bank's bottom right corner which spellbook the open setup is for, in red when it isn't the one"
+			+ " you are on. Only for setups that filter the bank, and that have a spellbook set in Inventory Setups.",
+		section = bankSection,
+		position = 4
+	)
+	default boolean showSpellbook()
+	{
+		return false;
 	}
 
 	@ConfigItem(

@@ -1,6 +1,8 @@
 package com.setuppicker;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -14,6 +16,7 @@ import javax.imageio.ImageIO;
 import net.runelite.client.ui.FontManager;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -126,6 +129,120 @@ public class PickerPreviewTest
 		final File out = new File("build/preview.png");
 		out.getParentFile().mkdirs();
 		ImageIO.write(image, "png", out);
+	}
+
+	@Test
+	public void renderMixedPreview() throws Exception
+	{
+		final BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = image.createGraphics();
+		g.setColor(new Color(60, 90, 60));
+		g.fillRect(0, 0, WIDTH, HEIGHT);
+
+		// Inventory setups and bank tags together: each row is marked with which it is
+		final List<SetupEntry> entries = new ArrayList<>(setups().subList(0, 5));
+		entries.add(SetupEntry.bankTag("Clues", 20));
+		entries.add(SetupEntry.bankTag("Zulrah", 21));
+		final List<SetupSection> sections = Arrays.asList(
+			new SetupSection("Bossing", new Color(120, 170, 255), Arrays.asList("Vorkath (dhcb)", "Zulrah", "Vardorvis")));
+		final PickerModel model = new PickerModel();
+		model.setRows(SetupRepository.group(entries, sections, false, true, Arrays.asList(SetupEntry.bankTagKey("Clues"))), entries.size());
+		model.setActiveBankTag("Zulrah");
+		final Rectangle bank = new Rectangle(220, 60, 488, 300);
+		g.setColor(new Color(73, 64, 52));
+		g.fill(bank);
+		final PickerLayout layout = PickerLayout.compute(bank, WIDTH, true, 160, false, true,
+			model.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
+		model.setVisibleRows(layout.getVisibleRows());
+		new PickerPainter(PickerTheme.DEFAULT).paint(g, layout, model.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
+		g.dispose();
+
+		assertTrue(model.view().isMixed());
+		final File out = new File("build/preview-mixed.png");
+		out.getParentFile().mkdirs();
+		ImageIO.write(image, "png", out);
+	}
+
+	@Test
+	public void renderNotesPreview() throws Exception
+	{
+		final BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = image.createGraphics();
+		g.setColor(new Color(60, 90, 60));
+		g.fillRect(0, 0, WIDTH, HEIGHT);
+
+		// The popup with the selection on a setup that has notes, which are shown beside it
+		final List<SetupEntry> entries = new ArrayList<>(setups().subList(0, 4));
+		entries.add(1, new SetupEntry("Zulrah (tbow)", false, null, 30,
+			"Ring of recoil in the inventory, not worn.\nSwap to the blowpipe for the jad phase and remember the antivenom+ from the bank chest"));
+		final PickerModel model = new PickerModel();
+		model.setShowNotes(true);
+		model.setSetups(entries);
+		model.openPalette();
+		final PickerLayout layout = PickerLayout.computePalette(new Rectangle(WIDTH, HEIGHT), 240,
+			model.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS, 10);
+		model.setVisibleRows(layout.getVisibleRows());
+		model.moveSelection(1);
+		final PickerPainter painter = new PickerPainter(PickerTheme.DEFAULT);
+		final Font font = FontManager.getRunescapeSmallFont();
+		painter.paint(g, layout, model.view(), null, ICONS, font, "");
+		painter.paintNotes(g, layout, model.view(), null, font, new Rectangle(WIDTH, HEIGHT), false);
+
+		final FontMetrics fm = g.getFontMetrics(font);
+		final List<String> lines = PickerPainter.wrap(fm, entries.get(1).getNotes(), 228, 8);
+		// the line break is kept, and no line is wider than the box
+		assertTrue(lines.get(0).startsWith("Ring of recoil"));
+		assertTrue(lines.stream().anyMatch(line -> line.startsWith("Swap to")));
+		assertEquals(entries.get(1).getNotes().replace('\n', ' '), String.join(" ", lines));
+		for (String line : lines)
+		{
+			assertTrue(line, fm.stringWidth(line) <= 228);
+		}
+		// too much to show is cut short
+		final List<String> cut = PickerPainter.wrap(fm, entries.get(1).getNotes(), 228, 2);
+		assertEquals(2, cut.size());
+		assertTrue(cut.get(1).endsWith("..."));
+		assertTrue(fm.stringWidth(cut.get(1)) <= 228);
+		// a word longer than a line is broken up
+		for (String line : PickerPainter.wrap(fm, "https://example.com/a/very/long/link/that/does/not/fit/on/one/line/at/all", 100, 8))
+		{
+			assertTrue(line, fm.stringWidth(line) <= 100);
+		}
+		g.dispose();
+
+		final File out = new File("build/preview-notes.png");
+		out.getParentFile().mkdirs();
+		ImageIO.write(image, "png", out);
+	}
+
+	@Test
+	public void scrollbarThumbFollowsTheScrollPositionAndBack()
+	{
+		// 30 rows, 10 of them showing
+		final PickerLayout layout = PickerLayout.computePalette(new Rectangle(WIDTH, HEIGHT), 240, 30, PickerLayout.ROW_HEIGHT_ICONS, 10);
+		final Rectangle bar = layout.getScrollbar(30);
+		assertEquals(layout.getList().y, bar.y);
+		assertEquals(layout.getList().height, bar.height);
+		assertEquals(layout.getList().x + layout.getList().width, bar.x + bar.width);
+
+		// a third of the list shows, so the thumb is a third of the bar, and runs from its top to its bottom
+		assertEquals(bar.height / 3, layout.getScrollThumb(30, 0).height);
+		assertEquals(bar.y, layout.getScrollThumb(30, 0).y);
+		final Rectangle last = layout.getScrollThumb(30, 20);
+		assertEquals(bar.y + bar.height, last.y + last.height);
+
+		// dragging the thumb to where it is for a scroll position gives that position, and stops at either end
+		for (int scroll = 0; scroll <= 20; scroll++)
+		{
+			assertEquals(scroll, layout.scrollAt(30, layout.getScrollThumb(30, scroll).y));
+		}
+		assertEquals(0, layout.scrollAt(30, bar.y - 500));
+		assertEquals(20, layout.scrollAt(30, bar.y + 500));
+
+		// nothing to scroll: no scrollbar
+		assertNull(layout.getScrollbar(10));
+		assertNull(layout.getScrollThumb(10, 0));
+		assertEquals(0, layout.scrollAt(10, bar.y + 50));
 	}
 
 	@Test
