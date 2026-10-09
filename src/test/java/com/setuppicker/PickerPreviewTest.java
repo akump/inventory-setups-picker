@@ -16,6 +16,7 @@ import javax.imageio.ImageIO;
 import net.runelite.client.ui.FontManager;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -101,7 +102,7 @@ public class PickerPreviewTest
 		docked.setRows(SetupRepository.group(setups(), sections, false, true, Arrays.asList("Barrows", "Zulrah")), setups().size());
 		docked.setActiveSetup("Zulrah");
 		final PickerLayout dockedLayout = PickerLayout.compute(bank, WIDTH, true, 160, false, true,
-			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
+			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS, 0);
 		docked.setVisibleRows(dockedLayout.getVisibleRows());
 		docked.scrollBy(1);
 		final Rectangle hovered = dockedLayout.getRow(3);
@@ -110,7 +111,7 @@ public class PickerPreviewTest
 
 		// Collapsed, on the bank's other side here so both can be seen: a narrow upright tab
 		final PickerLayout collapsed = PickerLayout.compute(bank, WIDTH, false, 160, true, true,
-			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
+			docked.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS, 0);
 		new PickerPainter(PickerTheme.DEFAULT).paint(g, collapsed, docked.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
 		g.dispose();
 
@@ -152,7 +153,7 @@ public class PickerPreviewTest
 		g.setColor(new Color(73, 64, 52));
 		g.fill(bank);
 		final PickerLayout layout = PickerLayout.compute(bank, WIDTH, true, 160, false, true,
-			model.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS);
+			model.view().getRows().size(), PickerLayout.ROW_HEIGHT_ICONS, 0);
 		model.setVisibleRows(layout.getVisibleRows());
 		new PickerPainter(PickerTheme.DEFAULT).paint(g, layout, model.view(), null, ICONS, FontManager.getRunescapeSmallFont(), "");
 		g.dispose();
@@ -250,10 +251,10 @@ public class PickerPreviewTest
 	{
 		// fixed mode: the bank spans the game area, with the inventory to its right
 		final Rectangle bank = new Rectangle(12, 2, 488, 334);
-		final PickerLayout left = PickerLayout.compute(bank, WIDTH, true, 160, false, true, 5, 20);
+		final PickerLayout left = PickerLayout.compute(bank, WIDTH, true, 160, false, true, 5, 20, 0);
 		assertEquals(bank.x + bank.width + PickerLayout.GAP, left.getBounds().x);
 
-		final PickerLayout none = PickerLayout.compute(bank, 512, true, 160, true, false, 5, 20);
+		final PickerLayout none = PickerLayout.compute(bank, 512, true, 160, true, false, 5, 20, 0);
 		assertEquals(bank.x, none.getBounds().x);
 		assertTrue(none.isCollapsed());
 		assertEquals(-1, none.rowAt(new Point(bank.x + 5, bank.y + 5)));
@@ -263,8 +264,60 @@ public class PickerPreviewTest
 		assertEquals(PickerLayout.HEADER_HEIGHT, none.getBounds().height);
 
 		// the upright tab is narrow enough to fit beside the bank where the list doesn't
-		final PickerLayout tab = PickerLayout.compute(bank, 530, true, 160, true, true, 5, 20);
+		final PickerLayout tab = PickerLayout.compute(bank, 530, true, 160, true, true, 5, 20, 0);
 		assertTrue(tab.isUprightTab());
 		assertEquals(bank.x + bank.width + PickerLayout.GAP, tab.getBounds().x);
+	}
+
+	@Test
+	public void dockedShowsNoMoreThanItsMaxRows()
+	{
+		final Rectangle bank = new Rectangle(220, 60, 488, 300);
+		final PickerLayout unlimited = PickerLayout.compute(bank, WIDTH, true, 160, false, true, 30, 20, 0);
+		assertEquals(12, unlimited.getVisibleRows());
+
+		final PickerLayout limited = PickerLayout.compute(bank, WIDTH, true, 160, false, true, 30, 20, 5);
+		assertEquals(5, limited.getVisibleRows());
+		assertEquals(5 * 20, limited.getList().height);
+		assertTrue(limited.getBounds().height < unlimited.getBounds().height);
+		// the rest are scrolled to
+		assertNotNull(limited.getScrollbar(30));
+
+		// fewer setups than the limit, or less room than it, and it is no taller than it has to be
+		assertEquals(3, PickerLayout.compute(bank, WIDTH, true, 160, false, true, 3, 20, 5).getVisibleRows());
+		assertEquals(12, PickerLayout.compute(bank, WIDTH, true, 160, false, true, 30, 20, 40).getVisibleRows());
+	}
+
+	@Test
+	public void draggedListGoesWhereItIsPutAndStaysOnTheCanvas()
+	{
+		final Rectangle canvas = new Rectangle(WIDTH, 500);
+		final Rectangle bank = new Rectangle(220, 60, 488, 300);
+		final PickerLayout moved = PickerLayout.computeMoved(bank, canvas, new Point(-200, 100), 160, false, 30, 20, 0);
+		assertEquals(new Point(20, 160), moved.getBounds().getLocation());
+		assertEquals(160, moved.getBounds().width);
+		// it runs to the bottom of the canvas, not of the bank
+		assertEquals((500 - moved.getList().y - PickerLayout.PADDING) / 20, moved.getVisibleRows());
+		assertTrue(moved.getBounds().y + moved.getBounds().height > bank.y + bank.height);
+		assertTrue(moved.getBounds().y + moved.getBounds().height <= 500);
+		assertEquals(4, PickerLayout.computeMoved(bank, canvas, new Point(-200, 100), 160, false, 30, 20, 4).getVisibleRows());
+
+		// it follows the bank
+		final Rectangle shifted = new Rectangle(240, 70, 488, 300);
+		assertEquals(new Point(40, 170),
+			PickerLayout.computeMoved(shifted, canvas, new Point(-200, 100), 160, false, 30, 20, 0).getBounds().getLocation());
+
+		// collapsed, it is its title bar wherever it is
+		final PickerLayout collapsed = PickerLayout.computeMoved(bank, canvas, new Point(-200, 100), 160, true, 30, 20, 0);
+		assertTrue(collapsed.isCollapsed());
+		assertFalse(collapsed.isUprightTab());
+		assertEquals(new Rectangle(20, 160, 160, PickerLayout.HEADER_HEIGHT), collapsed.getBounds());
+
+		// off the canvas, it is brought back to where its title bar can be reached
+		assertEquals(new Point(0, 0),
+			PickerLayout.computeMoved(bank, canvas, new Point(-900, -900), 160, false, 30, 20, 0).getBounds().getLocation());
+		final PickerLayout corner = PickerLayout.computeMoved(bank, canvas, new Point(900, 900), 160, false, 30, 20, 0);
+		assertEquals(new Point(WIDTH - 160, 500 - PickerLayout.HEADER_HEIGHT), corner.getBounds().getLocation());
+		assertEquals(1, corner.getVisibleRows());
 	}
 }

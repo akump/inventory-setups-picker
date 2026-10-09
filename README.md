@@ -41,7 +41,17 @@ can be turned off in the plugin's settings.
 Collapsed, the list shrinks to its title bar. With **Vertical when collapsed** turned on it becomes a narrow
 upright tab against the bank's edge instead.
 
+On a small client the list can reach down over the inventory. Set **Max rows** to limit how many rows it shows;
+the rest are scrolled to.
+
 <img src="docs/bank-list.png" alt="The list of setups beside the bank, with the open setup highlighted" width="700">
+
+### Moving it
+
+The list can be dragged anywhere by its title bar, which has a grip of six dots at its left end, and stays where
+you leave it relative to the bank. A click on the title bar without moving still collapses and expands it. Away
+from the bank's side, the list runs as far down as the client does unless **Max rows** limits it, and collapses to
+its title bar. To put it back beside the bank, right-click its title bar, or change the **Bank side** setting.
 
 ## Sections
 
@@ -121,11 +131,17 @@ its name in the settings and choose "Reset".
 | Group by section | On | List setups under their Inventory Setups sections. |
 | Sections as pages | Off | List just the sections, and open one to see its setups. |
 | Show beside bank | On | Show the list next to the bank while it is open. |
-| Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. |
+| Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. Changing it also puts a list you have dragged elsewhere back beside the bank. |
 | Width | 160 | Width of the list beside the bank, in pixels. |
+| Max rows | 0 | The most rows the list beside the bank shows before it scrolls. 0 lets it run as far down as the bank does, or as the client does once it has been dragged elsewhere. |
 | Show spellbook | Off | Say under the bank's bottom right corner which spellbook the open setup is for, in red when you're on another. |
-| Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. |
+| Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. A list that has been dragged elsewhere always collapses to its title bar. |
 | Colors | | Background, title bar, border, accent and text colors. |
+
+## Update messages
+
+After an update that adds something, the plugin says so in the chatbox the next time you log in. Each message is
+shown once per RuneLite profile.
 
 ## Requirements
 

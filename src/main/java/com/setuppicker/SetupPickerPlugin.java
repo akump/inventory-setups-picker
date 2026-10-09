@@ -2,6 +2,7 @@ package com.setuppicker;
 
 import com.google.inject.Binder;
 import com.google.inject.Provides;
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.GameState;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
@@ -16,6 +18,10 @@ import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -43,6 +49,11 @@ public class SetupPickerPlugin extends Plugin
 {
 	private static final String INVENTORY_SETUPS_PLUGIN_NAME = "Inventory Setups";
 	private static final String BANK_TAGS_PLUGIN_NAME = "Bank Tags";
+	// The latest version with something new to tell of, and what is said about it, once, at the next login.
+	// A release with nothing to announce leaves both as they are.
+	static final String NEWS_VERSION = "1.3.0";
+	static final String NEWS = "Inventory Setups Picker " + NEWS_VERSION + ": drag the list beside the bank by its title"
+		+ " bar to put it anywhere (right-click the title bar to put it back), and limit its height with the new Max rows setting.";
 
 	@Inject
 	private ClientThread clientThread;
@@ -52,6 +63,9 @@ public class SetupPickerPlugin extends Plugin
 
 	@Inject
 	private PluginManager pluginManager;
+
+	@Inject
+	private ChatMessageManager chatMessageManager;
 
 	@Inject
 	private OverlayManager overlayManager;
@@ -185,6 +199,11 @@ public class SetupPickerPlugin extends Plugin
 		final boolean bankTagEdited = SetupRepository.BANK_TAGS_CONFIG_GROUP.equals(event.getGroup())
 			&& (SetupRepository.BANK_TAGS_TABS_KEY.equals(event.getKey())
 			|| event.getKey().startsWith(SetupRepository.BANK_TAGS_ICON_PREFIX));
+		if (SetupPickerConfig.GROUP.equals(event.getGroup()) && SetupPickerConfig.KEY_SIDE.equals(event.getKey()))
+		{
+			// choosing a side puts a list that has been dragged elsewhere back beside the bank
+			setBankOffset(null);
+		}
 		if (setupEdited || bankTagEdited || SetupPickerConfig.GROUP.equals(event.getGroup()))
 		{
 			queueRefresh();
@@ -252,6 +271,15 @@ public class SetupPickerPlugin extends Plugin
 			recentTagTracker.reset();
 			model.resetSearch();
 		}
+		else if (!NEWS_VERSION.equals(config.lastSeenVersion()))
+		{
+			// This state comes again after every loading screen, so it's marked as seen before anything else
+			configManager.setConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_SEEN_VERSION, NEWS_VERSION);
+			chatMessageManager.queue(QueuedMessage.builder()
+				.type(ChatMessageType.CONSOLE)
+				.runeLiteFormattedMessage(new ChatMessageBuilder().append(ChatColorType.HIGHLIGHT).append(NEWS).build())
+				.build());
+		}
 	}
 
 	/**
@@ -286,6 +314,22 @@ public class SetupPickerPlugin extends Plugin
 	void setCollapsed(boolean collapsed)
 	{
 		configManager.setConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_COLLAPSED, collapsed);
+	}
+
+	/**
+	 * @param offset where the list beside the bank has been dragged to, from the bank's top left corner, or null
+	 *               to put it back at the bank's side
+	 */
+	void setBankOffset(Point offset)
+	{
+		if (offset == null)
+		{
+			configManager.unsetConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_BANK_OFFSET);
+		}
+		else
+		{
+			configManager.setConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_BANK_OFFSET, offset);
+		}
 	}
 
 	// Several triggers tend to fire together (e.g. every setup's config key on a profile switch), so
