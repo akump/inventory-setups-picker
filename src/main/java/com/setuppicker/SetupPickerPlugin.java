@@ -36,6 +36,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.banktags.BankTagsPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.Text;
 
 @PluginDescriptor(
@@ -199,6 +200,16 @@ public class SetupPickerPlugin extends Plugin
 		final boolean bankTagEdited = SetupRepository.BANK_TAGS_CONFIG_GROUP.equals(event.getGroup())
 			&& (SetupRepository.BANK_TAGS_TABS_KEY.equals(event.getKey())
 			|| event.getKey().startsWith(SetupRepository.BANK_TAGS_ICON_PREFIX));
+		if (SetupPickerConfig.GROUP.equals(event.getGroup()) && SetupPickerConfig.KEY_OPEN_KOFI.equals(event.getKey()))
+		{
+			// The settings panel has no links or buttons, so a checkbox stands in for one. Not when it's cleared
+			// along with the rest by resetting the plugin's settings.
+			if (event.getNewValue() != null)
+			{
+				LinkBrowser.browse(SetupPickerConfig.KOFI_URL);
+			}
+			return;
+		}
 		if (SetupPickerConfig.GROUP.equals(event.getGroup()) && SetupPickerConfig.KEY_SIDE.equals(event.getKey()))
 		{
 			// choosing a side puts a list that has been dragged elsewhere back beside the bank

@@ -20,6 +20,8 @@ public interface SetupPickerConfig extends Config
 	String KEY_SEEN_VERSION = "lastSeenVersion";
 	String KEY_SIDE = "side";
 	String KEY_BANK_OFFSET = "bankOffset";
+	String KEY_OPEN_KOFI = "openKofi";
+	String KOFI_URL = "https://ko-fi.com/andrewkump";
 
 	enum Side
 	{
@@ -371,6 +373,27 @@ public interface SetupPickerConfig extends Config
 	default Color textColor()
 	{
 		return PickerTheme.DEFAULT_TEXT;
+	}
+
+	@ConfigSection(
+		name = "Support",
+		description = "Support the plugin's development",
+		position = 40,
+		closedByDefault = true
+	)
+	String supportSection = "support";
+
+	@ConfigItem(
+		keyName = KEY_OPEN_KOFI,
+		name = "Open Ko-fi page",
+		description = "Click to open " + KOFI_URL + " in your browser, if you'd like to support the plugin."
+			+ " The checkbox is only something to click: ticked or not, it changes nothing else.",
+		section = supportSection,
+		position = 0
+	)
+	default boolean openKofi()
+	{
+		return false;
 	}
 
 	@ConfigItem(

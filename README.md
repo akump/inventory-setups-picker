@@ -137,6 +137,7 @@ its name in the settings and choose "Reset".
 | Show spellbook | Off | Say under the bank's bottom right corner which spellbook the open setup is for, in red when you're on another. |
 | Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. A list that has been dragged elsewhere always collapses to its title bar. |
 | Colors | | Background, title bar, border, accent and text colors. |
+| Open Ko-fi page | | Click to open the plugin's Ko-fi page in your browser. |
 
 ## Update messages
 
@@ -152,6 +153,12 @@ bank tags. The picker lists and opens what you keep there; it does not store any
 
 The Bank Tags support is based on Bank Tag Picker by **Ian-Fund**, a fork of this plugin that lists and opens
 Bank Tag tabs and their layouts. Thanks to Ian-Fund for that work.
+
+## Support
+
+If the plugin is useful to you, you can [buy me a coffee on Ko-fi](https://ko-fi.com/andrewkump).
+
+<a href="https://ko-fi.com/andrewkump"><img src="docs/kofi.jpg" alt="Support me on Ko-fi" width="320"></a>
 
 ## Development
 
