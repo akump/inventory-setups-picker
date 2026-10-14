@@ -54,7 +54,7 @@ public class PickerInputTest
 		}
 		model.setSetups(setups);
 		model.setVisibleRows(5);
-		input = new PickerInput(client, null, config, new SetupPickerOverlay(client, config, model, null, null), model,
+		input = new PickerInput(client, null, config, new SetupPickerOverlay(client, config, model, null, null, null), model,
 			new PlatformModifier(null)
 			{
 				@Override

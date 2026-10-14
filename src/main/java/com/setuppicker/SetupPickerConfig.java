@@ -142,11 +142,24 @@ public interface SetupPickerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "bossIcons",
+		name = "Boss icons",
+		description = "For a setup named after a boss, show the boss's icon from the hiscores in place of the setup's own."
+			+ " Its name only has to have the boss in it, by name or nickname: \"Vorkath (dhcb)\", \"kq\", \"CoX CM\","
+			+ " \"zuk\" and \"Sara gwd\" all count.",
+		position = 6
+	)
+	default boolean bossIcons()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showNotes",
 		name = "Show notes",
 		description = "Mark the setups that have notes in Inventory Setups, and show the notes of the one that is"
 			+ " selected or under the mouse in a box beside the list",
-		position = 6
+		position = 7
 	)
 	default boolean showNotes()
 	{
@@ -158,7 +171,7 @@ public interface SetupPickerConfig extends Config
 		name = "Sort alphabetically",
 		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list,"
 			+ " and bank tags that of their tabs.",
-		position = 7
+		position = 8
 	)
 	default boolean alphabetical()
 	{
@@ -169,7 +182,7 @@ public interface SetupPickerConfig extends Config
 		keyName = "favoritesFirst",
 		name = "Favorites first",
 		description = "List favorited setups before the rest",
-		position = 8
+		position = 9
 	)
 	default boolean favoritesFirst()
 	{
@@ -182,7 +195,7 @@ public interface SetupPickerConfig extends Config
 		name = "Recently used",
 		description = "How many of the setups you opened most recently to list at the top, latest first and marked"
 			+ " with a clock. With Group by section on they get a Recent heading. 0 turns this off.",
-		position = 9
+		position = 10
 	)
 	default int recentCount()
 	{
@@ -194,7 +207,7 @@ public interface SetupPickerConfig extends Config
 		name = "Fuzzy search",
 		description = "When a search finds nothing as typed, also match names that are a typo away (\"vorkahh\") or that"
 			+ " have the typed letters in order (\"vkdh\")",
-		position = 10
+		position = 11
 	)
 	default boolean fuzzySearch()
 	{
@@ -207,7 +220,7 @@ public interface SetupPickerConfig extends Config
 		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
 			+ " Typing a section's name lists its setups. Bank tags have no sections, so they are all listed"
 			+ " under Bank tags.",
-		position = 11
+		position = 12
 	)
 	default boolean groupBySection()
 	{
@@ -220,7 +233,7 @@ public interface SetupPickerConfig extends Config
 		description = "With Group by section on, list just the sections, and open one to see its setups on a page of"
 			+ " their own. Click the section's name at the top, or press Left or Backspace, to go back. Typing in"
 			+ " the list of sections still searches every setup.",
-		position = 12
+		position = 13
 	)
 	default boolean sectionPages()
 	{

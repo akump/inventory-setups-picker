@@ -11,7 +11,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.IntFunction;
+import java.util.function.Function;
 
 /**
  * Draws the picker. Has no dependency on the game client so it can be rendered in tests.
@@ -141,13 +141,13 @@ public final class PickerPainter
 
 	/**
 	 * @param mouse  mouse position on the canvas, or null
-	 * @param icons  item id to image, or null to draw no icons. May return null for an image that isn't ready.
-	 *               Images of the icon size, or a pixel larger all round, are drawn pixel for pixel in the middle of
-	 *               its place; larger ones are stretched to it.
+	 * @param icons  a setup's icon, or null to draw no icons. May return null for an image that isn't ready.
+	 *               Images of the icon size or smaller, or a pixel larger all round, are drawn pixel for pixel in
+	 *               the middle of its place; larger ones are stretched to it.
 	 * @param status message for the empty list when there are no setups at all
 	 */
 	public void paint(Graphics2D g, PickerLayout layout, PickerModel.View view, Point mouse,
-		IntFunction<BufferedImage> icons, Font font, String status)
+		Function<SetupEntry, BufferedImage> icons, Font font, String status)
 	{
 		prepare(g);
 		g.setFont(font);
@@ -316,7 +316,7 @@ public final class PickerPainter
 	}
 
 	private void paintList(Graphics2D g, FontMetrics fm, PickerLayout layout, PickerModel.View view, Point mouse,
-		IntFunction<BufferedImage> icons, String status)
+		Function<SetupEntry, BufferedImage> icons, String status)
 	{
 		final Rectangle list = layout.getList();
 		final List<PickerRow> rows = view.getRows();
@@ -369,7 +369,7 @@ public final class PickerPainter
 			int textX = row.x + 4;
 			if (icons != null)
 			{
-				final BufferedImage icon = icons.apply(setup.getIconItemId());
+				final BufferedImage icon = icons.apply(setup);
 				if (icon != null)
 				{
 					final int iconX = row.x + 2;
