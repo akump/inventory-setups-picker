@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
@@ -28,6 +29,7 @@ public class SetupPickerOverlay extends Overlay
 	private final SetupPickerConfig config;
 	private final PickerModel model;
 	private final SetupIcons icons;
+	private final BossIcons bossIcons;
 	private final PickerStyle style;
 
 	// Layout of the last rendered frame, read by the input listeners. Null while the picker isn't showing.
@@ -42,12 +44,13 @@ public class SetupPickerOverlay extends Overlay
 
 	@Inject
 	SetupPickerOverlay(Client client, SetupPickerConfig config, PickerModel model, ItemManager itemManager,
-		PickerStyle style)
+		BossIcons bossIcons, PickerStyle style)
 	{
 		this.client = client;
 		this.config = config;
 		this.model = model;
 		this.icons = new SetupIcons(itemManager);
+		this.bossIcons = bossIcons;
 		this.style = style;
 		// Positions itself, in canvas coordinates
 		setPosition(OverlayPosition.DYNAMIC);
@@ -176,10 +179,26 @@ public class SetupPickerOverlay extends Overlay
 		final PickerModel.View clamped = model.view();
 		painter.paint(graphics, newLayout, clamped,
 			hover,
-			config.showIcons() ? icons::get : null,
+			config.showIcons() ? this::icon : null,
 			FontManager.getRunescapeSmallFont(), status);
 		painter.paintNotes(graphics, newLayout, clamped, hover, FontManager.getRunescapeSmallFont(),
 			new Rectangle(client.getCanvasWidth(), client.getCanvasHeight()), notesOnLeft);
 		return null;
+	}
+
+	/**
+	 * The boss's icon for a setup named after a boss, when that's on, else the setup's own icon.
+	 */
+	private BufferedImage icon(SetupEntry setup)
+	{
+		if (config.bossIcons())
+		{
+			final BufferedImage boss = bossIcons.get(setup.getName(), PickerPainter.ICON_WIDTH, PickerPainter.ICON_HEIGHT);
+			if (boss != null)
+			{
+				return boss;
+			}
+		}
+		return icons.get(setup.getIconItemId());
 	}
 }

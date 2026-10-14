@@ -12,7 +12,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.IntFunction;
+import java.util.function.Function;
 import javax.imageio.ImageIO;
 import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.ui.FontManager;
@@ -51,8 +51,9 @@ public class PickerPreviewTest
 	}
 
 	// stand-in for item sprites, with the outline the game draws round them, halved as the overlay halves them
-	private static final IntFunction<BufferedImage> ICONS = id ->
+	private static final Function<SetupEntry, BufferedImage> ICONS = setup ->
 	{
+		final int id = setup.getIconItemId();
 		final BufferedImage image = new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB);
 		final Graphics2D g = image.createGraphics();
 		g.setColor(new Color(0x000001));

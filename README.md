@@ -96,7 +96,7 @@ whose spellbook is set to none in Inventory Setups, or that aren't filtering the
 
 ## Ordering and search
 
-Setups are shown with the icon and color you gave them in Inventory Setups, and a star if they are a favorite.
+Setups are shown with the icon and color you gave them in Inventory Setups, and a star if they are a favorite. With **Boss icons** on, setups named after a boss show that boss's icon instead.
 
 - **Sort alphabetically** (on by default): list setups by name. Turn it off to keep the order of the Inventory
   Setups side panel.
@@ -131,6 +131,7 @@ list, so the list is that much wider than its **Width** setting and has the same
 | Start on open setup | On | Open the popup with the already open setup selected. |
 | Popup rows | 10 | How many rows the popup shows before it scrolls. |
 | Show icons | On | Show each setup's icon next to its name. |
+| Boss icons | Off | For a setup named after a boss, show the boss's hiscores icon instead. The name only has to contain the boss's name or a nickname: "Vorkath (dhcb)", "kq", "CoX CM", "zuk", "Sara gwd". |
 | Show notes | Off | Mark setups that have notes, and show the notes of the selected or hovered one beside the list. |
 | Sort alphabetically | On | List setups by name instead of in the side panel's order. |
 | Favorites first | On | List favorited setups before the rest. |

@@ -51,9 +51,9 @@ public class SetupPickerPlugin extends Plugin
 	private static final String BANK_TAGS_PLUGIN_NAME = "Bank Tags";
 	// The latest version with something new to tell of, and what is said about it, once, at the next login.
 	// A release with nothing to announce leaves both as they are.
-	static final String NEWS_VERSION = "1.3.0";
-	static final String NEWS = "Inventory Setups Picker " + NEWS_VERSION + ": drag the list beside the bank by its title"
-		+ " bar to put it anywhere (right-click the title bar to put it back), and limit its height with the new Max rows setting.";
+	static final String NEWS_VERSION = "1.4.0";
+	static final String NEWS = "Inventory Setups Picker " + NEWS_VERSION + ": turn on Boss icons to show a boss's icon for"
+		+ " setups named after it, and Match resource pack (under Colors) to draw the lists with your interface style.";
 
 	@Inject
 	private ClientThread clientThread;
