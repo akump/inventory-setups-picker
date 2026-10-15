@@ -61,13 +61,6 @@ public interface SetupPickerConfig extends Config
 		}
 	}
 
-	@ConfigSection(
-		name = "Beside the bank",
-		description = "The list shown next to the bank interface",
-		position = 20
-	)
-	String bankSection = "bank";
-
 	@ConfigItem(
 		keyName = "source",
 		name = "List",
@@ -81,13 +74,21 @@ public interface SetupPickerConfig extends Config
 		return Source.INVENTORY_SETUPS;
 	}
 
+	@ConfigSection(
+		name = "Hotkey popup",
+		description = "The list that the hotkey opens anywhere in game",
+		position = 10
+	)
+	String popupSection = "popup";
+
 	@ConfigItem(
 		keyName = "hotkey",
 		name = "Open hotkey",
 		description = "Opens the setup list anywhere in game. Only the key is used; the modifier comes from the next setting."
 			+ " Type to filter, Up/Down to move, Enter to open the setup (or close it, if it's the one already open),"
 			+ " Esc to cancel.",
-		position = 1
+		section = popupSection,
+		position = 0
 	)
 	default Keybind openKey()
 	{
@@ -99,7 +100,8 @@ public interface SetupPickerConfig extends Config
 		name = "Require Ctrl/Cmd",
 		description = "Require the platform modifier (Cmd on Mac, Ctrl on Windows) together with the open hotkey."
 			+ " Follows the Platform Keys plugin's key profile when that plugin is on.",
-		position = 2
+		section = popupSection,
+		position = 1
 	)
 	default boolean requireModifier()
 	{
@@ -111,7 +113,8 @@ public interface SetupPickerConfig extends Config
 		name = "Start on open setup",
 		description = "When a setup is already open, the popup opens with it selected, so pressing Enter closes it."
 			+ " (A bank tag that's already open is left open.) When off, the selection always starts at the top.",
-		position = 3
+		section = popupSection,
+		position = 2
 	)
 	default boolean startOnOpenSetup()
 	{
@@ -123,18 +126,27 @@ public interface SetupPickerConfig extends Config
 		keyName = "popupRows",
 		name = "Popup rows",
 		description = "How many setups the popup shows before it scrolls",
-		position = 4
+		section = popupSection,
+		position = 3
 	)
 	default int popupRows()
 	{
 		return 10;
 	}
 
+	@ConfigSection(
+		name = "Display",
+		description = "What is shown with each setup, in both lists",
+		position = 15
+	)
+	String displaySection = "display";
+
 	@ConfigItem(
 		keyName = "showIcons",
 		name = "Show icons",
 		description = "Show each setup's icon next to its name",
-		position = 5
+		section = displaySection,
+		position = 0
 	)
 	default boolean showIcons()
 	{
@@ -147,7 +159,8 @@ public interface SetupPickerConfig extends Config
 		description = "For a setup named after a boss, show the boss's icon from the hiscores in place of the setup's own."
 			+ " Its name only has to have the boss in it, by name or nickname: \"Vorkath (dhcb)\", \"kq\", \"CoX CM\","
 			+ " \"zuk\" and \"Sara gwd\" all count.",
-		position = 6
+		section = displaySection,
+		position = 1
 	)
 	default boolean bossIcons()
 	{
@@ -159,19 +172,28 @@ public interface SetupPickerConfig extends Config
 		name = "Show notes",
 		description = "Mark the setups that have notes in Inventory Setups, and show the notes of the one that is"
 			+ " selected or under the mouse in a box beside the list",
-		position = 7
+		section = displaySection,
+		position = 2
 	)
 	default boolean showNotes()
 	{
 		return false;
 	}
 
+	@ConfigSection(
+		name = "Order and search",
+		description = "How both lists are ordered, grouped and searched",
+		position = 18
+	)
+	String orderSection = "order";
+
 	@ConfigItem(
 		keyName = "alphabetical",
 		name = "Sort alphabetically",
 		description = "List setups by name. When off, they keep the order of the Inventory Setups side panel's list,"
 			+ " and bank tags that of their tabs.",
-		position = 8
+		section = orderSection,
+		position = 0
 	)
 	default boolean alphabetical()
 	{
@@ -182,7 +204,8 @@ public interface SetupPickerConfig extends Config
 		keyName = "favoritesFirst",
 		name = "Favorites first",
 		description = "List favorited setups before the rest",
-		position = 9
+		section = orderSection,
+		position = 1
 	)
 	default boolean favoritesFirst()
 	{
@@ -195,23 +218,12 @@ public interface SetupPickerConfig extends Config
 		name = "Recently used",
 		description = "How many of the setups you opened most recently to list at the top, latest first and marked"
 			+ " with a clock. With Group by section on they get a Recent heading. 0 turns this off.",
-		position = 10
+		section = orderSection,
+		position = 2
 	)
 	default int recentCount()
 	{
 		return 0;
-	}
-
-	@ConfigItem(
-		keyName = "fuzzySearch",
-		name = "Fuzzy search",
-		description = "When a search finds nothing as typed, also match names that are a typo away (\"vorkahh\") or that"
-			+ " have the typed letters in order (\"vkdh\")",
-		position = 11
-	)
-	default boolean fuzzySearch()
-	{
-		return true;
 	}
 
 	@ConfigItem(
@@ -220,7 +232,8 @@ public interface SetupPickerConfig extends Config
 		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
 			+ " Typing a section's name lists its setups. Bank tags have no sections, so they are all listed"
 			+ " under Bank tags.",
-		position = 12
+		section = orderSection,
+		position = 3
 	)
 	default boolean groupBySection()
 	{
@@ -233,12 +246,67 @@ public interface SetupPickerConfig extends Config
 		description = "With Group by section on, list just the sections, and open one to see its setups on a page of"
 			+ " their own. Click the section's name at the top, or press Left or Backspace, to go back. Typing in"
 			+ " the list of sections still searches every setup.",
-		position = 13
+		section = orderSection,
+		position = 4
 	)
 	default boolean sectionPages()
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "fuzzySearch",
+		name = "Fuzzy search",
+		description = "When a search finds nothing as typed, also match names that are a typo away (\"vorkahh\") or that"
+			+ " have the typed letters in order (\"vkdh\")",
+		section = orderSection,
+		position = 5
+	)
+	default boolean fuzzySearch()
+	{
+		return true;
+	}
+
+	@ConfigSection(
+		name = "In bank",
+		description = "What is shown on the bank itself for the open setup",
+		position = 19
+	)
+	String inBankSection = "inBank";
+
+	@ConfigItem(
+		keyName = "highlightDifferences",
+		name = "Highlight differences",
+		description = "For a setup with Highlight differences on in Inventory Setups, outline the items in the bank whose"
+			+ " slots its side panel highlights, in the setup's highlight color. Follows the setup's Unordered"
+			+ " highlighting, and each item's fuzzy and stack settings. Only for setups that filter the bank.",
+		section = inBankSection,
+		position = 0
+	)
+	default boolean highlightDifferences()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showSpellbook",
+		name = "Show spellbook",
+		description = "Say under the bank's bottom right corner which spellbook the open setup is for, in red when it isn't the one"
+			+ " you are on. Only for setups that filter the bank, and that have a spellbook set in Inventory Setups.",
+		section = inBankSection,
+		position = 1
+	)
+	default boolean showSpellbook()
+	{
+		return false;
+	}
+
+	@ConfigSection(
+		name = "Beside the bank",
+		description = "The list shown next to the bank interface",
+		position = 20
+	)
+	String bankSection = "bank";
 
 	@ConfigItem(
 		keyName = "showBesideBank",
@@ -250,19 +318,6 @@ public interface SetupPickerConfig extends Config
 	default boolean showBesideBank()
 	{
 		return true;
-	}
-
-	@ConfigItem(
-		keyName = "showSpellbook",
-		name = "Show spellbook",
-		description = "Say under the bank's bottom right corner which spellbook the open setup is for, in red when it isn't the one"
-			+ " you are on. Only for setups that filter the bank, and that have a spellbook set in Inventory Setups.",
-		section = bankSection,
-		position = 5
-	)
-	default boolean showSpellbook()
-	{
-		return false;
 	}
 
 	@ConfigItem(
@@ -398,6 +453,32 @@ public interface SetupPickerConfig extends Config
 	default Color textColor()
 	{
 		return PickerTheme.DEFAULT_TEXT;
+	}
+
+	@ConfigItem(
+		keyName = "overrideDifferenceColor",
+		name = "Override difference color",
+		description = "Outline the differences in the bank in the color below, instead of each setup's highlight color"
+			+ " from Inventory Setups",
+		section = colorSection,
+		position = 6
+	)
+	default boolean overrideDifferenceColor()
+	{
+		return false;
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "differenceColor",
+		name = "Difference",
+		description = "The outline of the differences in the bank, when Override difference color is on",
+		section = colorSection,
+		position = 7
+	)
+	default Color differenceColor()
+	{
+		return SetupHighlight.DEFAULT_COLOR;
 	}
 
 	@ConfigItem(

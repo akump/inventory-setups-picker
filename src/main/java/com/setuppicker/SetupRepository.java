@@ -448,6 +448,20 @@ public class SetupRepository
 	}
 
 	/**
+	 * How a setup wants its differences from what the player has highlighted, or null when it doesn't or there
+	 * is no such setup.
+	 */
+	public SetupHighlight loadHighlight(String name)
+	{
+		if (name.isEmpty())
+		{
+			return null;
+		}
+		final String hash = Hashing.murmur3_128().hashUnencodedChars(name).toString();
+		return SetupHighlight.parse(gson, configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_SETUP_PREFIX + hash));
+	}
+
+	/**
 	 * Open a setup in Inventory Setups, as if picked from its side panel.
 	 */
 	public void open(String name)

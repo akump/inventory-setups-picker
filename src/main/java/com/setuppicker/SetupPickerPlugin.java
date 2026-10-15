@@ -98,6 +98,9 @@ public class SetupPickerPlugin extends Plugin
 	private SpellbookOverlay spellbookOverlay;
 
 	@Inject
+	private DifferencesOverlay differencesOverlay;
+
+	@Inject
 	private PickerStyle style;
 
 	private final AtomicBoolean refreshQueued = new AtomicBoolean();
@@ -122,6 +125,7 @@ public class SetupPickerPlugin extends Plugin
 	{
 		overlayManager.add(overlay);
 		overlayManager.add(spellbookOverlay);
+		overlayManager.add(differencesOverlay);
 		mouseManager.registerMouseListener(input);
 		mouseManager.registerMouseWheelListener(input);
 		keyManager.registerKeyListener(input);
@@ -130,7 +134,9 @@ public class SetupPickerPlugin extends Plugin
 		// Inventory Setups only announces the active setup when it changes, so ask once for the current one
 		clientThread.invokeLater(() ->
 		{
-			model.setActiveSetup(repository.queryActiveSetup());
+			final String name = repository.queryActiveSetup();
+			model.setActiveSetup(name);
+			differencesOverlay.setHighlight(repository.loadHighlight(name));
 			recentTagTracker.reset();
 		});
 	}
@@ -140,6 +146,7 @@ public class SetupPickerPlugin extends Plugin
 	{
 		overlayManager.remove(overlay);
 		overlayManager.remove(spellbookOverlay);
+		overlayManager.remove(differencesOverlay);
 		mouseManager.unregisterMouseListener(input);
 		mouseManager.unregisterMouseWheelListener(input);
 		keyManager.unregisterKeyListener(input);
@@ -164,6 +171,7 @@ public class SetupPickerPlugin extends Plugin
 			final Object active = message.getData().get(SetupRepository.DATA_ACTIVE_SETUP);
 			final String name = active instanceof String ? (String) active : "";
 			model.setActiveSetup(name);
+			differencesOverlay.setHighlight(repository.loadHighlight(name));
 			if (!name.isEmpty() && config.source().hasSetups())
 			{
 				// This message also comes for every edit to the open setup, which leaves the list as it is
@@ -369,6 +377,8 @@ public class SetupPickerPlugin extends Plugin
 					}
 				}
 				spellbookOverlay.setSpellbooks(spellbooks);
+				// editing the open setup rewrites its saved json, which brings a refresh
+				differencesOverlay.setHighlight(repository.loadHighlight(model.view().getActiveSetup()));
 				final Map<String, String> tagNames = new HashMap<>();
 				// its tabs stay saved while Bank Tags is off, but can't be opened
 				if (source.hasBankTags() && bankTagsOn)

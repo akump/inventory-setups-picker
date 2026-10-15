@@ -90,6 +90,25 @@ With **Show spellbook** turned on, a line under the bank's bottom right corner s
 is for, such as "Lunar spellbook". When you are on a different one it reads "Needs Lunar spellbook" in red. Nothing is shown for setups
 whose spellbook is set to none in Inventory Setups, or that aren't filtering the bank.
 
+## Highlighted differences
+
+For a setup with **Highlight differences** turned on in Inventory Setups, the items in the bank whose slots its side
+panel highlights are outlined too, in the setup's highlight color, so you can see what is left to withdraw or equip.
+They follow the setup's own settings:
+
+- **Unordered highlighting** off: an item counts as missing unless it is in the same inventory slot as in the
+  setup. On: it can be anywhere in your inventory. Each slot counts, so with four sharks in the setup and two in
+  your inventory the sharks stay outlined.
+- **Fuzzy** items are matched whatever their charges or variant, so a ring of dueling(3) does for a ring of
+  dueling(8).
+- **Stack compare** on an item outlines it when you have more or fewer than the setup, as it is set to.
+
+Equipment is compared slot by slot either way. A rune in the setup's rune pouch can be in any slot of yours, and with
+no rune pouch in your inventory all of its runes are outlined. The outline goes when the slot no longer differs. Only setups that
+filter the bank are highlighted, and turning off **Highlight differences** in this plugin's settings hides the
+outlines for every setup. To use one color for every setup, turn on **Override difference color** under Colors and
+pick it there.
+
 ## Options at a glance
 
 <img src="docs/options.png" alt="Three options: recently used setups listed first with a clock, a popup in custom colors, and the list collapsed to a vertical tab beside the bank" width="700">
@@ -126,27 +145,59 @@ list, so the list is that much wider than its **Width** setting and has the same
 | Setting | Default | What it does |
 | --- | --- | --- |
 | List | Inventory Setups | What to list: Inventory Setups, Bank Tags (opened with their layouts), or both. |
+
+### Hotkey popup
+
+| Setting | Default | What it does |
+| --- | --- | --- |
 | Open hotkey | K | The key that opens the popup. Only the key is used; the modifier comes from the next setting. |
 | Require Ctrl/Cmd | On | Require Cmd (Mac) or Ctrl (Windows/Linux) with the hotkey. Follows Platform Keys' key profile when that plugin is on. |
 | Start on open setup | On | Open the popup with the already open setup selected. |
 | Popup rows | 10 | How many rows the popup shows before it scrolls. |
+
+### Display
+
+| Setting | Default | What it does |
+| --- | --- | --- |
 | Show icons | On | Show each setup's icon next to its name. |
 | Boss icons | Off | For a setup named after a boss, show the boss's hiscores icon instead. The name only has to contain the boss's name or a nickname: "Vorkath (dhcb)", "kq", "CoX CM", "zuk", "Sara gwd". |
 | Show notes | Off | Mark setups that have notes, and show the notes of the selected or hovered one beside the list. |
+
+### Order and search
+
+| Setting | Default | What it does |
+| --- | --- | --- |
 | Sort alphabetically | On | List setups by name instead of in the side panel's order. |
 | Favorites first | On | List favorited setups before the rest. |
 | Recently used | 0 | How many recently opened setups to list at the top. 0 turns it off. |
-| Fuzzy search | On | Allow for typos and skipped letters when a search finds nothing as typed. |
 | Group by section | On | List setups under their Inventory Setups sections. |
 | Sections as pages | Off | List just the sections, and open one to see its setups. |
+| Fuzzy search | On | Allow for typos and skipped letters when a search finds nothing as typed. |
+
+### In bank
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Highlight differences | On | Outline the items in the bank whose slots Inventory Setups highlights for the open setup, in its highlight color. Only for setups with Highlight differences on. |
+| Show spellbook | Off | Say under the bank's bottom right corner which spellbook the open setup is for, in red when you're on another. |
+
+### Beside the bank
+
+| Setting | Default | What it does |
+| --- | --- | --- |
 | Show beside bank | On | Show the list next to the bank while it is open. |
 | Bank side | Left | Which side of the bank the list sits on. It moves to the other side when there is no room. Changing it also puts a list you have dragged elsewhere back beside the bank. |
 | Width | 160 | Width of the list beside the bank, in pixels. |
 | Max rows | 0 | The most rows the list beside the bank shows before it scrolls. 0 lets it run as far down as the bank does, or as the client does once it has been dragged elsewhere. |
-| Show spellbook | Off | Say under the bank's bottom right corner which spellbook the open setup is for, in red when you're on another. |
 | Vertical when collapsed | Off | Collapse the list beside the bank to an upright tab instead of its title bar. A list that has been dragged elsewhere always collapses to its title bar. |
+
+### Colors
+
+| Setting | Default | What it does |
+| --- | --- | --- |
 | Match resource pack | Off | Draw the lists with the game's own interface sprites, so they follow your resource pack or interface style. |
-| Colors | | Background, title bar, border, accent and text colors. |
+| Background, Title bar, Border, Accent, Text | | The colors of both lists. |
+| Override difference color, Difference | Off, red | One color for the differences in the bank, in place of each setup's own. |
 
 ## Update messages
 
