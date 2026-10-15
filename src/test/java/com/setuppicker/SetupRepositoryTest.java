@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import net.runelite.api.gameval.ItemID;
@@ -245,6 +246,30 @@ public class SetupRepositoryTest
 		// tags alone don't make it a list in sections
 		assertEquals("Clues Zulrah", describe(SetupRepository.group(
 			Arrays.asList(SetupEntry.bankTag("Clues", 1), SetupEntry.bankTag("Zulrah", 1)), sections, true, true)));
+	}
+
+	@Test
+	public void setupsAndBankTagsGetHeadingsWithoutSections()
+	{
+		// grouped, but no section has any setups in it
+		final List<SetupSection> empty = Collections.singletonList(new SetupSection("Empty", null, Collections.emptyList()));
+		assertEquals("[Inventory Setups] Araxxor Vorkath barrows Cerberus Zulrah [Bank tags] Clues Zulrah",
+			describe(SetupRepository.group(setupsAndBankTags(), empty, true, true, Collections.emptyList(), true)));
+		assertEquals("[Recent] Clues* [Inventory Setups] Araxxor Vorkath barrows Cerberus Zulrah [Bank tags] Clues Zulrah",
+			describe(SetupRepository.group(setupsAndBankTags(), new ArrayList<>(), true, true,
+				Collections.singletonList(SetupEntry.bankTagKey("Clues")), true)));
+		assertTrue(PickerRow.SETUPS.isBuiltIn());
+
+		// with sections in use, the setups in none are still Unassigned
+		final List<SetupSection> sections = Collections.singletonList(new SetupSection("Bossing", null, Collections.singletonList("Zulrah")));
+		assertEquals("[Bossing] Zulrah [Unassigned] Araxxor Vorkath barrows Cerberus [Bank tags] Clues Zulrah",
+			describe(SetupRepository.group(setupsAndBankTags(), sections, true, true, Collections.emptyList(), true)));
+
+		// just one kind, or not grouped: a plain list
+		assertEquals("Araxxor Vorkath barrows Cerberus Zulrah",
+			describe(SetupRepository.group(fiveSetups(), new ArrayList<>(), true, true, Collections.emptyList(), true)));
+		assertFalse(describe(SetupRepository.group(setupsAndBankTags(), new ArrayList<>(), true, true, Collections.emptyList(), false))
+			.contains("["));
 	}
 
 	@Test

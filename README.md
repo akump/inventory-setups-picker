@@ -73,7 +73,9 @@ same as clicking its tab. Picking the tag that is already open leaves it open.
 
 With both listed, each row is marked with where it is from: a little person for a setup, a tag for a bank
 tag. Bank tags have no sections, so when the list is grouped by section they go under a "Bank tags" heading after
-your sections and "Unassigned". A setup and a tag with the same name are listed separately.
+your sections and "Unassigned". If none of your sections has a setup in it, your setups go under an "Inventory
+Setups" heading instead, so the two are still kept apart; turn off **Group by section** to mix them in one list. A
+setup and a tag with the same name are listed separately.
 
 Bank tags have no color or favorite flag. Tags opened from their tabs count as recently used too.
 
@@ -145,6 +147,7 @@ list, so the list is that much wider than its **Width** setting and has the same
 | Setting | Default | What it does |
 | --- | --- | --- |
 | List | Inventory Setups | What to list: Inventory Setups, Bank Tags (opened with their layouts), or both. |
+| Show tips | On | Say once in the chatbox about an option of Inventory Setups, or of this plugin, that would do more with a setup you have opened. |
 
 ### Hotkey popup
 
@@ -198,6 +201,19 @@ list, so the list is that much wider than its **Width** setting and has the same
 | Match resource pack | Off | Draw the lists with the game's own interface sprites, so they follow your resource pack or interface style. |
 | Background, Title bar, Border, Accent, Text | | The colors of both lists. |
 | Override difference color, Difference | Off, red | One color for the differences in the bank, in place of each setup's own. |
+
+## Tips
+
+Inventory Setups has a lot of options, and several of them change what this plugin can do. When you open a setup
+that would get more out of one, the plugin says so once in the chatbox:
+
+- the setup doesn't filter the bank
+- Highlight differences is off for the setup, so nothing is outlined in the bank
+- the setup is for the Ancient, Lunar or Arceuus spellbook, and **Show spellbook** is off
+- the setup has notes, and **Show notes** is off
+
+At most one tip is given each time you open a setup, and each one only once per RuneLite profile. Turn off
+**Show tips** to have none.
 
 ## Update messages
 

@@ -22,6 +22,11 @@ public final class PickerRow
 	 */
 	public static final PickerRow BANK_TAGS = new PickerRow(null, "Bank tags", null, false, false, 3);
 
+	/**
+	 * Heading for all the setups, when both setups and bank tags are listed and grouped but no sections are in use.
+	 */
+	public static final PickerRow SETUPS = new PickerRow(null, "Inventory Setups", null, false, false, 4);
+
 	private final SetupEntry setup;
 	private final String sectionName;
 	private final Color sectionColor;

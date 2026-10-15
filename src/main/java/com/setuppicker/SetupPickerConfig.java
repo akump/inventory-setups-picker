@@ -74,6 +74,19 @@ public interface SetupPickerConfig extends Config
 		return Source.INVENTORY_SETUPS;
 	}
 
+	@ConfigItem(
+		keyName = "showTips",
+		name = "Show tips",
+		description = "When you open a setup, say in the chatbox once about an option of Inventory Setups, or of this"
+			+ " plugin, that would do more with it, such as filtering the bank or highlighting what you haven't got yet."
+			+ " Each tip is given once.",
+		position = 1
+	)
+	default boolean showTips()
+	{
+		return true;
+	}
+
 	@ConfigSection(
 		name = "Hotkey popup",
 		description = "The list that the hotkey opens anywhere in game",
@@ -231,7 +244,8 @@ public interface SetupPickerConfig extends Config
 		name = "Group by section",
 		description = "List setups under the sections you put them in in Inventory Setups, with the rest under Unassigned."
 			+ " Typing a section's name lists its setups. Bank tags have no sections, so they are all listed"
-			+ " under Bank tags.",
+			+ " under Bank tags, and with no sections in use, setups go under Inventory Setups. When off, everything"
+			+ " is in one list.",
 		section = orderSection,
 		position = 3
 	)

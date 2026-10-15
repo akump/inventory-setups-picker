@@ -101,6 +101,9 @@ public class SetupPickerPlugin extends Plugin
 	private DifferencesOverlay differencesOverlay;
 
 	@Inject
+	private SetupTips tips;
+
+	@Inject
 	private PickerStyle style;
 
 	private final AtomicBoolean refreshQueued = new AtomicBoolean();
@@ -170,7 +173,13 @@ public class SetupPickerPlugin extends Plugin
 		{
 			final Object active = message.getData().get(SetupRepository.DATA_ACTIVE_SETUP);
 			final String name = active instanceof String ? (String) active : "";
+			// This message also comes for every edit to the open setup, which isn't opening it
+			final boolean opened = !name.isEmpty() && !name.equals(model.view().getActiveSetup());
 			model.setActiveSetup(name);
+			if (opened)
+			{
+				tips.onSetupOpened(name, repository.loadSetupJson(name));
+			}
 			differencesOverlay.setHighlight(repository.loadHighlight(name));
 			if (!name.isEmpty() && config.source().hasSetups())
 			{
@@ -397,7 +406,8 @@ public class SetupPickerPlugin extends Plugin
 				model.setFuzzySearch(config.fuzzySearch());
 				model.setShowNotes(config.showNotes());
 				model.setStartOnActiveSetup(config.startOnOpenSetup());
-				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst(), recent), setups.size());
+				model.setRows(SetupRepository.group(setups, sections, config.alphabetical(), config.favoritesFirst(), recent,
+					config.groupBySection()), setups.size());
 				overlay.setStatus(status(source, setupsOn, bankTagsOn));
 			});
 		}
