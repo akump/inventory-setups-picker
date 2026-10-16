@@ -326,6 +326,16 @@ public class SetupRepository
 	static List<PickerRow> group(List<SetupEntry> setups, List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst,
 		List<String> recent)
 	{
+		return group(setups, sections, alphabetical, favoritesFirst, recent, false);
+	}
+
+	/**
+	 * @param grouped whether the list is to be grouped. With setups and bank tags both listed, they then go under
+	 *                headings of their own even when no sections are in use.
+	 */
+	static List<PickerRow> group(List<SetupEntry> setups, List<SetupSection> sections, boolean alphabetical, boolean favoritesFirst,
+		List<String> recent, boolean grouped)
+	{
 		final Map<String, SetupEntry> byKey = new HashMap<>();
 		for (SetupEntry setup : setups)
 		{
@@ -358,7 +368,15 @@ public class SetupRepository
 			}
 		}
 
-		final boolean sectioned = !rows.isEmpty();
+		final boolean inSections = !rows.isEmpty();
+		boolean hasSetups = false;
+		boolean hasBankTags = false;
+		for (SetupEntry setup : setups)
+		{
+			hasSetups |= !setup.isBankTag();
+			hasBankTags |= setup.isBankTag();
+		}
+		final boolean sectioned = inSections || (grouped && hasSetups && hasBankTags);
 
 		final List<PickerRow> recentRows = new ArrayList<>();
 		for (String key : recent)
@@ -394,7 +412,7 @@ public class SetupRepository
 			}
 			return rows;
 		}
-		addUnder(rows, PickerRow.UNASSIGNED, setups, assigned, false);
+		addUnder(rows, inSections ? PickerRow.UNASSIGNED : PickerRow.SETUPS, setups, assigned, false);
 		addUnder(rows, PickerRow.BANK_TAGS, setups, assigned, true);
 		return rows;
 	}
@@ -445,6 +463,24 @@ public class SetupRepository
 		eventBus.post(new PluginMessage(NAMESPACE, MSG_GET_ACTIVE_SETUP_CONTENTS, data));
 		final Object active = data.get(DATA_ACTIVE_SETUP);
 		return active instanceof String ? (String) active : "";
+	}
+
+	/**
+	 * How a setup wants its differences from what the player has highlighted, or null when it doesn't or there
+	 * is no such setup.
+	 */
+	public SetupHighlight loadHighlight(String name)
+	{
+		return name.isEmpty() ? null : SetupHighlight.parse(gson, loadSetupJson(name));
+	}
+
+	/**
+	 * What Inventory Setups has saved for a setup, or null for none.
+	 */
+	public String loadSetupJson(String name)
+	{
+		final String hash = Hashing.murmur3_128().hashUnencodedChars(name).toString();
+		return configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_SETUP_PREFIX + hash);
 	}
 
 	/**
