@@ -15,6 +15,7 @@ import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.MouseAdapter;
@@ -537,8 +538,9 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 
 	/**
 	 * Whether a key that types a character would type it into the game: into an input box, such as the bank's
-	 * search or an "Enter amount", or into the chat, unless Key Remapping is keeping typing out of the chat until
-	 * Enter is pressed.
+	 * search or an "Enter amount", or into a chat message already being written, unless Key Remapping is keeping
+	 * typing out of the chat until Enter is pressed. An empty chat line doesn't count: the chat always takes keys
+	 * without Key Remapping, so counting it would leave a plain hotkey never opening the picker.
 	 */
 	private boolean gameTakesTyping()
 	{
@@ -548,6 +550,11 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 		}
 		final Widget chatbox = client.getWidget(InterfaceID.Chatbox.UNIVERSE);
 		if (chatbox == null || chatbox.getOnKeyListener() == null)
+		{
+			return false;
+		}
+		final String typed = client.getVarcStrValue(VarClientID.CHATINPUT);
+		if (typed == null || typed.isEmpty())
 		{
 			return false;
 		}

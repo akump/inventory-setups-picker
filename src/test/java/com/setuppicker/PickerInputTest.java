@@ -9,6 +9,7 @@ import java.util.List;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.Keybind;
 import static org.junit.Assert.assertEquals;
@@ -26,6 +27,8 @@ public class PickerInputTest
 	// the game's chatbox: whether it is taking keys, and its input line's text; null text for no chatbox
 	private boolean chatboxListening = true;
 	private String chatLine;
+	// what has been typed into the chat so far
+	private String chatTyped = "";
 	private boolean inputFieldFocused;
 	private PickerModel model;
 	private PickerInput input;
@@ -44,6 +47,8 @@ public class PickerInputTest
 						return GameState.LOGGED_IN;
 					case "getFocusedInputFieldWidget":
 						return inputFieldFocused ? widget(null, null) : null;
+					case "getVarcStrValue":
+						return (int) args[0] == VarClientID.CHATINPUT ? chatTyped : null;
 					case "getWidget":
 						if (chatLine == null)
 						{
@@ -372,16 +377,28 @@ public class PickerInputTest
 	public void aPlainHotkeyIsTypedIntoTheChatWhileChatting()
 	{
 		requireModifier = false;
-		chatLine = "Zezima: *";
+		chatTyped = "hello";
+		chatLine = "Zezima: hello*";
 		assertFalse(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
 		assertFalse(send(KeyEvent.KEY_TYPED, 0, KeyEvent.VK_UNDEFINED, 'k'));
 		assertFalse(model.view().isPaletteOpen());
 	}
 
 	@Test
+	public void aPlainHotkeyOpensThePickerWhenTheChatIsEmpty()
+	{
+		// the game as it is without Key Remapping: the chat takes keys, but nothing is being written
+		requireModifier = false;
+		chatLine = "Zezima: *";
+		assertTrue(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
+		assertTrue(model.view().isPaletteOpen());
+	}
+
+	@Test
 	public void aPlainHotkeyOpensThePickerWhileKeyRemappingKeepsTypingOutOfTheChat()
 	{
 		requireModifier = false;
+		chatTyped = "hello";
 		chatLine = "<col=000000>Zezima</col>: <col=0000ff>" + PickerInput.PRESS_ENTER_TO_CHAT + "</col>";
 		assertTrue(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
 		assertTrue(model.view().isPaletteOpen());
@@ -401,7 +418,8 @@ public class PickerInputTest
 	public void aPlainHotkeyThatTypesNothingOpensThePickerEvenWhileChatting()
 	{
 		requireModifier = false;
-		chatLine = "Zezima: *";
+		chatTyped = "hello";
+		chatLine = "Zezima: hello*";
 		hotkey = new Keybind(KeyEvent.VK_F6, 0);
 		assertTrue(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_F6, KeyEvent.CHAR_UNDEFINED));
 		assertTrue(model.view().isPaletteOpen());
