@@ -405,13 +405,13 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 				model.deleteForward();
 				break;
 			case KeyEvent.VK_UP:
-				model.moveSelection(-1);
+				model.stepSelection(-1);
 				break;
 			case KeyEvent.VK_DOWN:
-				model.moveSelection(1);
+				model.stepSelection(1);
 				break;
 			case KeyEvent.VK_TAB:
-				model.moveSelection(e.isShiftDown() ? -1 : 1);
+				model.stepSelection(e.isShiftDown() ? -1 : 1);
 				break;
 			case KeyEvent.VK_PAGE_UP:
 				model.pageSelection(-1);

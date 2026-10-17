@@ -191,6 +191,49 @@ public class PickerModelTest
 	}
 
 	@Test
+	public void steppingPastEitherEndGoesRound()
+	{
+		model.openPalette();
+		model.stepSelection(-1);
+		assertEquals("Slayer range", model.getSelectedSetup().getName());
+		// 3 rows fit, so the last setup is at the bottom of the screen
+		assertEquals(4, model.view().getScroll());
+
+		model.stepSelection(1);
+		assertEquals(0, model.view().getSelected());
+		assertEquals(0, model.view().getScroll());
+
+		// a page stops at the end rather than going round
+		model.pageSelection(-1);
+		assertEquals(0, model.view().getSelected());
+	}
+
+	@Test
+	public void steppingRoundToTheTopShowsTheFirstHeading()
+	{
+		setSectionedRows();
+		model.openPalette();
+		model.stepSelection(-1);
+		assertEquals("Barrows", model.getSelectedSetup().getName());
+
+		model.stepSelection(1);
+		assertEquals("Vorkath", model.getSelectedSetup().getName());
+		assertEquals(1, model.view().getSelected());
+		assertEquals(0, model.view().getScroll());
+	}
+
+	@Test
+	public void steppingWithOneSetupStaysOnIt()
+	{
+		model.openPalette();
+		type("barr");
+		model.stepSelection(-1);
+		assertEquals("Barrows", model.getSelectedSetup().getName());
+		model.stepSelection(1);
+		assertEquals("Barrows", model.getSelectedSetup().getName());
+	}
+
+	@Test
 	public void selectionSkipsSectionHeadings()
 	{
 		setSectionedRows();

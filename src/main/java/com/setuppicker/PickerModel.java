@@ -558,6 +558,22 @@ public class PickerModel
 	}
 
 	/**
+	 * Move the selection a row up or down, going round from the first setup to the last and back.
+	 *
+	 * @param direction -1 for up, 1 for down
+	 */
+	public synchronized void stepSelection(int direction)
+	{
+		final int before = selected;
+		moveSelection(direction);
+		if (selected == before && filtered.size() > 1)
+		{
+			// already at the end it was heading for: on round to the other end
+			moveSelection(-direction * filtered.size());
+		}
+	}
+
+	/**
 	 * Move the selection by whole pages of visible rows.
 	 */
 	public synchronized void pageSelection(int pages)
