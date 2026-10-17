@@ -3,6 +3,8 @@ package com.setuppicker;
 import com.google.inject.Binder;
 import com.google.inject.Provides;
 import java.awt.Point;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
@@ -106,6 +109,12 @@ public class SetupPickerPlugin extends Plugin
 	@Inject
 	private PickerStyle style;
 
+	@Inject
+	private PlatformModifier platformModifier;
+
+	// A first install has no news to catch up on: it is welcomed instead, at the next login
+	private boolean welcomePending;
+
 	private final AtomicBoolean refreshQueued = new AtomicBoolean();
 	private final RecentTagTracker recentTagTracker = new RecentTagTracker();
 	// The names of the bank tags listed, by their standardized form. Client thread only.
@@ -126,6 +135,13 @@ public class SetupPickerPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		// Nothing saved at all means a first install, rather than an update from before the news was kept track of
+		if (config.lastSeenVersion().isEmpty()
+			&& configManager.getConfigurationKeys(SetupPickerConfig.GROUP + ".").isEmpty())
+		{
+			configManager.setConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_SEEN_VERSION, NEWS_VERSION);
+			welcomePending = true;
+		}
 		overlayManager.add(overlay);
 		overlayManager.add(spellbookOverlay);
 		overlayManager.add(differencesOverlay);
@@ -296,15 +312,51 @@ public class SetupPickerPlugin extends Plugin
 			recentTagTracker.reset();
 			model.resetSearch();
 		}
+		else if (welcomePending)
+		{
+			// This state comes again after every loading screen, so it's cleared before anything else
+			welcomePending = false;
+			if (config.showTips())
+			{
+				say(welcome(config.openKey(), config.requireModifier(), platformModifier.get()));
+			}
+		}
 		else if (!NEWS_VERSION.equals(config.lastSeenVersion()))
 		{
 			// This state comes again after every loading screen, so it's marked as seen before anything else
 			configManager.setConfiguration(SetupPickerConfig.GROUP, SetupPickerConfig.KEY_SEEN_VERSION, NEWS_VERSION);
-			chatMessageManager.queue(QueuedMessage.builder()
-				.type(ChatMessageType.CONSOLE)
-				.runeLiteFormattedMessage(new ChatMessageBuilder().append(ChatColorType.HIGHLIGHT).append(NEWS).build())
-				.build());
+			say(NEWS);
 		}
+	}
+
+	private void say(String message)
+	{
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.CONSOLE)
+			.runeLiteFormattedMessage(new ChatMessageBuilder().append(ChatColorType.HIGHLIGHT).append(message).build())
+			.build());
+	}
+
+	/**
+	 * What a first install is told: how to open the popup, with the hotkey as it is set.
+	 *
+	 * @param modifier the platform's modifier, Cmd or Ctrl, as an extended modifier mask
+	 */
+	static String welcome(Keybind hotkey, boolean requireModifier, int modifier)
+	{
+		final String keys;
+		if (hotkey.getKeyCode() == KeyEvent.VK_UNDEFINED)
+		{
+			keys = "the hotkey in its settings";
+		}
+		else
+		{
+			// spelt out: the client's own names, such as a Mac's ⌘, aren't in the chat's font
+			keys = (!requireModifier ? "" : modifier == InputEvent.META_DOWN_MASK ? "Cmd+" : "Ctrl+")
+				+ KeyEvent.getKeyText(hotkey.getKeyCode());
+		}
+		return "Inventory Setups Picker: press " + keys + " to open any setup by typing its name, or use the list"
+			+ " beside the bank.";
 	}
 
 	/**

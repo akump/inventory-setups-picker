@@ -14,9 +14,12 @@ import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseWheelListener;
+import net.runelite.client.util.Text;
 
 /**
  * Mouse and keyboard handling for the picker. Events that land on the picker, and all typing while its
@@ -36,6 +39,8 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 	private static final long ARROW_REPEAT_MILLIS = 50;
 	private static final int MODIFIER_MASK = InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK
 		| InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK;
+	// what the core Key Remapping plugin shows in the chatbox while it keeps typing out of the chat
+	static final String PRESS_ENTER_TO_CHAT = "Press Enter to Chat...";
 
 	private final Client client;
 	private final SetupPickerPlugin plugin;
@@ -525,7 +530,28 @@ public class PickerInput extends MouseAdapter implements KeyListener, MouseWheel
 		{
 			return false;
 		}
-		// Without a modifier the hotkey is a plain key, which has to stay typeable in the search box
-		return wanted != 0 || !model.view().isSearchFocused();
+		// Without a modifier the hotkey is a plain key, which has to stay typeable in the search box, and in the
+		// game wherever it takes typing: a K pressed while chatting is the letter K
+		return wanted != 0 || !model.view().isSearchFocused() && !(typedChar(e, code) != 0 && gameTakesTyping());
+	}
+
+	/**
+	 * Whether a key that types a character would type it into the game: into an input box, such as the bank's
+	 * search or an "Enter amount", or into the chat, unless Key Remapping is keeping typing out of the chat until
+	 * Enter is pressed.
+	 */
+	private boolean gameTakesTyping()
+	{
+		if (client.getFocusedInputFieldWidget() != null)
+		{
+			return true;
+		}
+		final Widget chatbox = client.getWidget(InterfaceID.Chatbox.UNIVERSE);
+		if (chatbox == null || chatbox.getOnKeyListener() == null)
+		{
+			return false;
+		}
+		final Widget line = client.getWidget(InterfaceID.Chatbox.INPUT);
+		return line == null || !Text.removeTags(line.getText()).endsWith(PRESS_ENTER_TO_CHAT);
 	}
 }

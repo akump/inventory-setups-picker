@@ -8,6 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.config.Keybind;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -19,6 +22,11 @@ public class PickerInputTest
 	private final Canvas canvas = new Canvas();
 	private int platformModifier = InputEvent.CTRL_DOWN_MASK;
 	private boolean requireModifier = true;
+	private Keybind hotkey = new Keybind(KeyEvent.VK_K, 0);
+	// the game's chatbox: whether it is taking keys, and its input line's text; null text for no chatbox
+	private boolean chatboxListening = true;
+	private String chatLine;
+	private boolean inputFieldFocused;
 	private PickerModel model;
 	private PickerInput input;
 
@@ -34,6 +42,16 @@ public class PickerInputTest
 						return canvas;
 					case "getGameState":
 						return GameState.LOGGED_IN;
+					case "getFocusedInputFieldWidget":
+						return inputFieldFocused ? widget(null, null) : null;
+					case "getWidget":
+						if (chatLine == null)
+						{
+							return null;
+						}
+						return (int) args[0] == InterfaceID.Chatbox.UNIVERSE
+							? widget(chatboxListening ? new Object[]{1} : null, null)
+							: (int) args[0] == InterfaceID.Chatbox.INPUT ? widget(null, chatLine) : null;
 					default:
 						throw new UnsupportedOperationException(method.getName());
 				}
@@ -44,6 +62,12 @@ public class PickerInputTest
 			public boolean requireModifier()
 			{
 				return requireModifier;
+			}
+
+			@Override
+			public Keybind openKey()
+			{
+				return hotkey;
 			}
 		};
 		model = new PickerModel();
@@ -61,6 +85,23 @@ public class PickerInputTest
 				public int get()
 				{
 					return platformModifier;
+				}
+			});
+	}
+
+	private static Widget widget(Object[] keyListener, String text)
+	{
+		return (Widget) Proxy.newProxyInstance(PickerInputTest.class.getClassLoader(), new Class<?>[]{Widget.class},
+			(proxy, method, args) ->
+			{
+				switch (method.getName())
+				{
+					case "getOnKeyListener":
+						return keyListener;
+					case "getText":
+						return text;
+					default:
+						throw new UnsupportedOperationException(method.getName());
 				}
 			});
 	}
@@ -325,5 +366,44 @@ public class PickerInputTest
 		assertFalse(model.view().isQuerySelected());
 		assertEquals(0, model.view().getCaret());
 		assertEquals("sy", model.view().getQuery());
+	}
+
+	@Test
+	public void aPlainHotkeyIsTypedIntoTheChatWhileChatting()
+	{
+		requireModifier = false;
+		chatLine = "Zezima: *";
+		assertFalse(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
+		assertFalse(send(KeyEvent.KEY_TYPED, 0, KeyEvent.VK_UNDEFINED, 'k'));
+		assertFalse(model.view().isPaletteOpen());
+	}
+
+	@Test
+	public void aPlainHotkeyOpensThePickerWhileKeyRemappingKeepsTypingOutOfTheChat()
+	{
+		requireModifier = false;
+		chatLine = "<col=000000>Zezima</col>: <col=0000ff>" + PickerInput.PRESS_ENTER_TO_CHAT + "</col>";
+		assertTrue(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
+		assertTrue(model.view().isPaletteOpen());
+	}
+
+	@Test
+	public void aPlainHotkeyIsTypedIntoAnInputBox()
+	{
+		requireModifier = false;
+		chatLine = PickerInput.PRESS_ENTER_TO_CHAT;
+		inputFieldFocused = true;
+		assertFalse(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_K, 'k'));
+		assertFalse(model.view().isPaletteOpen());
+	}
+
+	@Test
+	public void aPlainHotkeyThatTypesNothingOpensThePickerEvenWhileChatting()
+	{
+		requireModifier = false;
+		chatLine = "Zezima: *";
+		hotkey = new Keybind(KeyEvent.VK_F6, 0);
+		assertTrue(send(KeyEvent.KEY_PRESSED, 0, KeyEvent.VK_F6, KeyEvent.CHAR_UNDEFINED));
+		assertTrue(model.view().isPaletteOpen());
 	}
 }
